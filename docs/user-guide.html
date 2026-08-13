@@ -39,7 +39,6 @@
     <ul>
       <li>Access to an <strong>EarthRanger</strong> instance with <code>hwc_lvstprd</code> (livestock predation) events logged for the analysis period</li>
     </ul>
-    <p>The workflow configuration form also asks you to select a <strong>Google Earth Engine</strong> data source (Step 5 below). No task in this workflow currently uses that connection &mdash; any configured GEE source will satisfy the field. See <a href="troubleshooting.html">Troubleshooting</a> for details.</p>
 
     <h2 id="load">1. Load the Workflow</h2>
     <p>In the workflow runner, go to <strong>Workflow Templates</strong> and click <strong>Add Workflow Template</strong>. Paste this repository's URL into the <strong>Github Link</strong> field, then click <strong>Add Template</strong>:</p>
@@ -73,9 +72,6 @@
       </tbody>
     </table>
     <p>All livestock predation events are fetched within this window. The analysis covers incidents from the three target ranches &mdash; Eselengei, Mbirikani, and Kimana &mdash; restricted to valid claims only.</p>
-
-    <h3 id="gee">Set GEE Connection</h3>
-    <p>Select any configured Google Earth Engine data source from the <strong>Data Source</strong> dropdown. This field is required to submit the form, but no chart, map, or table in this workflow currently depends on it.</p>
 
     <h3 id="er">Connect to EarthRanger</h3>
     <p>Select the EarthRanger data source configured above from the <strong>Data Source</strong> dropdown (e.g. <code>Amboseli Trust for Elephants</code>).</p>

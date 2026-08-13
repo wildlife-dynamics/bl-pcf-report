@@ -61,12 +61,7 @@ workflow:
     partial:
       groupers: 
         - index_name: "Ranch"
-
-  # Define GEE connnection 
-  - name: Set GEE connection 
-    id: gee_client 
-    task: set_gee_connection
-
+        
   #  Connect to ER 
   - name: Connect to ER 
     id: er_client_name 

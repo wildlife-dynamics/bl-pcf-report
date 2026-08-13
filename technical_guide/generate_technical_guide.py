@@ -142,16 +142,17 @@ story += [
       "restricts analysis to <b>valid claims</b> only."),
     sp(4),
     note(
-        "Version 2.0 rewrites this guide against the current <code>spec.yaml</code>. "
-        "It corrects the dependency list (migrated to <code>ecoscope-platform</code>), "
+        "Version 2.1 removes the <code>gee_client</code> connection field, which "
+        "was dropped from <code>spec.yaml</code> — this workflow never used it "
+        "(it never performed NDVI or other Earth-Engine analysis). Version 2.0 "
+        "rewrote this guide against the (then-current) <code>spec.yaml</code>, "
+        "correcting the dependency list (migrated to <code>ecoscope-platform</code>), "
         "the actual chart/task names (several task and function names in the "
-        "previous version did not match any task in <code>spec.yaml</code>), the "
-        "previous-period mechanism (now a flexible Custom/Preset/Calendar offset, "
+        "original version did not match any task in <code>spec.yaml</code>), the "
+        "previous-period mechanism (a flexible Custom/Preset/Calendar offset, "
         "not a simple integer), the Word report's fixed <code>\"Ecoscope\"</code> "
         "author field and <code>overall_report.docx</code> filename, and the "
-        "dashboard, which now wires up 24 widgets rather than an empty list. It "
-        "also documents the unused <code>gee_client</code> connection field and "
-        "the current/previous dual-pipeline in full."
+        "dashboard, which wires up 24 widgets rather than an empty list."
     ),
     sp(4),
     p("For each run the workflow delivers:"),
@@ -248,21 +249,12 @@ story += [
     p("A single EarthRanger connection (<code>set_er_connection</code>) is "
       "required and reused for both the current- and previous-period event fetches."),
     sp(6),
-    h2("2.5  Google Earth Engine connection (unused)"),
-    note(
-        "The workflow form includes a <b>Set GEE connection</b> field "
-        "(<code>set_gee_connection</code>) that is never referenced by any "
-        "downstream task in <code>spec.yaml</code> — this workflow performs no "
-        "NDVI or other Earth-Engine analysis. It appears to be a leftover from "
-        "an earlier template. Any configured GEE data source will satisfy the field."
-    ),
-    sp(6),
-    h2("2.6  Grouper"),
+    h2("2.5  Grouper"),
     p("The workflow groups data by the <b>Ranch</b> column (fixed via "
       "<code>set_groupers</code>, not user-configurable). This grouper drives "
       "every per-ranch table split and the ranch-level historic chart fan-out."),
     sp(6),
-    h2("2.7  Time frequency"),
+    h2("2.6  Time frequency"),
     p("A user-selectable <code>time_frequency</code> parameter "
       "(<code>select_time_frequency</code> — Annual / Monthly / Weekly / Daily) "
       "controls the temporal aggregation unit used by all multi-line and "

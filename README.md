@@ -27,8 +27,6 @@ Before running the workflow, ensure you have:
 
 - Access to an **EarthRanger** instance with `hwc_lvstprd` (livestock predation) events logged for the analysis period
 
-> The workflow configuration form also asks you to select a **Google Earth Engine** data source (see Step 4 below). No task in this workflow currently uses that connection — any configured GEE source will satisfy the field. See [Troubleshooting](docs/troubleshooting.html) for details.
-
 ---
 
 ## Step-by-Step Configuration
@@ -90,19 +88,13 @@ All livestock predation events are fetched within this window. The analysis cove
 
 ---
 
-### Step 5 — Set GEE Connection
-
-Select any configured Google Earth Engine data source from the **Data Source** dropdown. This field is required to submit the form, but no chart, map, or table in this workflow currently depends on it.
-
----
-
-### Step 6 — Connect to EarthRanger
+### Step 5 — Connect to EarthRanger
 
 Select the EarthRanger data source configured in Step 2 from the **Data Source** dropdown (e.g. `Amboseli Trust for Elephants`).
 
 ---
 
-### Step 7 — Previous Period
+### Step 6 — Previous Period
 
 Define the comparison ("previous") period used by the per-ranch historic charts. Every option computes a period that ends on your selected time range's **Start Date** (so it never overlaps with the current period) — only the comparison period's own start date changes:
 
@@ -116,7 +108,7 @@ If no previous-period events are found, the workflow continues gracefully — do
 
 ---
 
-### Step 8 — Select Time Frequency
+### Step 7 — Select Time Frequency
 
 Choose the temporal aggregation unit used by all multi-line and multi-bar time-series charts, and by the per-ranch historic comparison charts:
 

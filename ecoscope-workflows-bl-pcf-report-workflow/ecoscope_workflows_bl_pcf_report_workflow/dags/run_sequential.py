@@ -18,7 +18,6 @@ from ecoscope.platform.tasks.io import get_events as get_events
 from ecoscope.platform.tasks.io import persist_df as persist_df
 from ecoscope.platform.tasks.io import persist_text as persist_text
 from ecoscope.platform.tasks.io import set_er_connection as set_er_connection
-from ecoscope.platform.tasks.io import set_gee_connection as set_gee_connection
 from ecoscope.platform.tasks.results import (
     create_map_widget_single_view as create_map_widget_single_view,
 )
@@ -209,23 +208,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(groupers=[{"index_name": "Ranch"}], **(params.get("groupers") or {}))
-        .call()
-    )
-
-    gee_client = (
-        task(set_gee_connection)
-        .validate()
-        .set_task_instance_id("gee_client")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(**(params.get("gee_client") or {}))
         .call()
     )
 
