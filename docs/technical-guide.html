@@ -26,9 +26,9 @@
 
     <p>
       <a href="assets/bl_pcf_report_technical_guide.pdf">Download the full Technical Guide (PDF)</a>
-      <span class="badge">v2.0</span>
+      <span class="badge">v2.1</span>
     </p>
-    <p>Version 2.0 rewrites the guide against the current <code>spec.yaml</code>. It corrects the dependency list (migrated to <code>ecoscope-platform</code> plus the Big Life, WWF-Virunga, STE, and MNC extension packages actually declared), the real chart/task names (several task names in the previous version matched nothing in <code>spec.yaml</code>), the previous-period mechanism (a flexible Custom/Preset/Calendar offset, not a simple integer), the Word report's fixed <code>"Ecoscope"</code> author field and <code>overall_report.docx</code> filename, and the dashboard, which wires up 24 widgets rather than an empty list. It also documents the unused <code>gee_client</code> connection field.</p>
+    <p>Version 2.1 removes the <code>gee_client</code> connection field, which was dropped from <code>spec.yaml</code> &mdash; this workflow never used it. Version 2.0 rewrote the guide against the then-current <code>spec.yaml</code>: it corrected the dependency list (migrated to <code>ecoscope-platform</code> plus the Big Life, WWF-Virunga, STE, and MNC extension packages actually declared), the real chart/task names (several task names in the original version matched nothing in <code>spec.yaml</code>), the previous-period mechanism (a flexible Custom/Preset/Calendar offset, not a simple integer), the Word report's fixed <code>"Ecoscope"</code> author field and <code>overall_report.docx</code> filename, and the dashboard, which wires up 24 widgets rather than an empty list.</p>
 
     <h2>Contents</h2>
     <ol>
@@ -41,7 +41,6 @@
           <li>External data — static Amboseli layers</li>
           <li>Base map tiles</li>
           <li>EarthRanger connection</li>
-          <li>Google Earth Engine connection (unused)</li>
           <li>Grouper</li>
           <li>Time frequency</li>
         </ol>

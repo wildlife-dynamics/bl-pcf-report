@@ -37,11 +37,6 @@
     </div>
 
     <div class="error-block">
-      <p class="symptom">Form requires a Google Earth Engine connection, but I don't have one / it doesn't seem to do anything</p>
-      <p>This is expected &mdash; the <a href="user-guide.html#gee">Set GEE Connection</a> field is required to submit the form, but no task in <code>spec.yaml</code> currently reads from it. Select any configured GEE data source (or create a placeholder one) to get past this field; it has no effect on the report.</p>
-    </div>
-
-    <div class="error-block">
       <p class="symptom">Almost everything is empty even though EarthRanger has predation events</p>
       <p>Two filters run before any chart, map, or table is built: events must have <code>Ranch</code> exactly matching <strong>Eselengei</strong>, <strong>Mbirikani</strong>, or <strong>Kimana</strong>, and <code>"Validity of claim"</code> exactly equal to <strong>"Valid"</strong>. If your EarthRanger event form uses different ranch names, different capitalisation, or a different claim-validity label, those events are silently dropped rather than causing an error &mdash; check the raw event details for spelling/casing mismatches.</p>
     </div>
@@ -123,7 +118,7 @@
 
     <div class="error-block">
       <p class="symptom"><code>test-cases.yaml</code> references a <code>calculator</code> task that doesn't exist in this workflow</p>
-      <p>The current <code>test-cases.yaml</code> still contains <code>calculator</code> parameters (<code>a</code>, <code>b</code>, <code>operation</code>) left over from the workflow scaffold &mdash; <code>spec.yaml</code> has no task with that id. If you're updating test cases, replace these with parameters for the tasks this workflow actually exposes (<code>workflow_details</code>, <code>time_range</code>, <code>gee_client</code>, <code>er_client_name</code>, the previous-period offset, and <code>time_frequency</code>).</p>
+      <p>The current <code>test-cases.yaml</code> still contains <code>calculator</code> parameters (<code>a</code>, <code>b</code>, <code>operation</code>) left over from the workflow scaffold &mdash; <code>spec.yaml</code> has no task with that id. If you're updating test cases, replace these with parameters for the tasks this workflow actually exposes (<code>workflow_details</code>, <code>time_range</code>, <code>er_client_name</code>, the previous-period offset, and <code>time_frequency</code>).</p>
     </div>
 
     <div class="error-block">

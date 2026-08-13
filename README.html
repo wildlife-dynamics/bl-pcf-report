@@ -44,9 +44,6 @@
 <ul>
 <li>Access to an <strong>EarthRanger</strong> instance with <code>hwc_lvstprd</code> (livestock predation) events logged for the analysis period</li>
 </ul>
-<blockquote>
-<p>The workflow configuration form also asks you to select a <strong>Google Earth Engine</strong> data source (see Step 4 below). No task in this workflow currently uses that connection — any configured GEE source will satisfy the field. See <a href="docs/troubleshooting.html">Troubleshooting</a> for details.</p>
-</blockquote>
 <hr />
 <h2 id="step-by-step-configuration">Step-by-Step Configuration</h2>
 <h3 id="step-1-add-the-workflow-template">Step 1 — Add the Workflow Template</h3>
@@ -122,13 +119,10 @@
 </table>
 <p>All livestock predation events are fetched within this window. The analysis covers incidents from the three target ranches — Eselengei, Mbirikani, and Kimana — restricted to valid claims only.</p>
 <hr />
-<h3 id="step-5-set-gee-connection">Step 5 — Set GEE Connection</h3>
-<p>Select any configured Google Earth Engine data source from the <strong>Data Source</strong> dropdown. This field is required to submit the form, but no chart, map, or table in this workflow currently depends on it.</p>
-<hr />
-<h3 id="step-6-connect-to-earthranger">Step 6 — Connect to EarthRanger</h3>
+<h3 id="step-5-connect-to-earthranger">Step 5 — Connect to EarthRanger</h3>
 <p>Select the EarthRanger data source configured in Step 2 from the <strong>Data Source</strong> dropdown (e.g. <code>Amboseli Trust for Elephants</code>).</p>
 <hr />
-<h3 id="step-7-previous-period">Step 7 — Previous Period</h3>
+<h3 id="step-6-previous-period">Step 6 — Previous Period</h3>
 <p>Define the comparison (“previous”) period used by the per-ranch historic charts. Every option computes a period that ends on your selected time range’s <strong>Start Date</strong> (so it never overlaps with the current period) — only the comparison period’s own start date changes:</p>
 <table>
 <colgroup>
@@ -158,7 +152,7 @@
 </table>
 <p>If no previous-period events are found, the workflow continues gracefully — downstream charts and tables for that branch are simply skipped rather than the run failing.</p>
 <hr />
-<h3 id="step-8-select-time-frequency">Step 8 — Select Time Frequency</h3>
+<h3 id="step-7-select-time-frequency">Step 7 — Select Time Frequency</h3>
 <p>Choose the temporal aggregation unit used by all multi-line and multi-bar time-series charts, and by the per-ranch historic comparison charts:</p>
 <table>
 <thead>
