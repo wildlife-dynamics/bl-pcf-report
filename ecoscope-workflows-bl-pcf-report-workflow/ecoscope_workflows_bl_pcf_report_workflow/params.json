@@ -58,7 +58,22 @@
       ],
       "type": "object",
       "description": "Choose the period of time to analyze.",
-      "title": "Set Report Time Range"
+      "title": "Time Range"
+    },
+    "gee_client": {
+      "additionalProperties": false,
+      "properties": {
+        "data_source": {
+          "$ref": "#/$defs/GoogleEarthEngineConnection",
+          "title": "",
+          "description": "Select one of your configured data sources."
+        }
+      },
+      "required": [
+        "data_source"
+      ],
+      "type": "object",
+      "title": "Set GEE connection"
     },
     "er_client_name": {
       "additionalProperties": false,
@@ -73,37 +88,46 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Connect to EarthRanger"
+      "title": "Connect to ER"
+    },
+    "set_previous_period": {
+      "additionalProperties": false,
+      "properties": {
+        "offset": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PresetPreviousPeriod"
+            },
+            {
+              "$ref": "#/$defs/CustomPreviousPeriod"
+            },
+            {
+              "$ref": "#/$defs/CalendarPreviousPeriod"
+            }
+          ],
+          "title": "Offset",
+          "description": "How to compute the start of the comparison period."
+        }
+      },
+      "required": [
+        "offset"
+      ],
+      "type": "object",
+      "title": ""
     },
     "time_frequency": {
       "additionalProperties": false,
       "properties": {
         "time_frequency": {
           "$ref": "#/$defs/TimeFrequency",
-          "title": "Time Frequency",
-          "description": "The time frequency to use across all time-series charts in the workflow."
+          "title": "Time Frequency"
         }
       },
       "required": [
         "time_frequency"
       ],
       "type": "object",
-      "title": "Select time frequency for temporal charts"
-    },
-    "previous_period_range": {
-      "additionalProperties": false,
-      "properties": {
-        "periods_back": {
-          "default": 1,
-          "minimum": 1,
-          "title": "Periods Back",
-          "type": "integer",
-          "description": "How many periods back to shift"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": ""
+      "title": "Select Time Frequency"
     }
   },
   "$defs": {
@@ -135,6 +159,19 @@
       "title": "TimezoneInfo",
       "type": "object"
     },
+    "GoogleEarthEngineConnection": {
+      "properties": {
+        "name": {
+          "title": "Data Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "GoogleEarthEngineConnection",
+      "type": "object"
+    },
     "EarthRangerConnection": {
       "properties": {
         "name": {
@@ -146,6 +183,81 @@
         "name"
       ],
       "title": "EarthRangerConnection",
+      "type": "object"
+    },
+    "CalendarPreviousPeriod": {
+      "properties": {
+        "since": {
+          "description": "Select the start date for the comparison period.",
+          "format": "date-time",
+          "title": "Since",
+          "type": "string"
+        }
+      },
+      "required": [
+        "since"
+      ],
+      "title": "Calendar",
+      "type": "object"
+    },
+    "CustomPreviousPeriod": {
+      "properties": {
+        "years": {
+          "default": 0,
+          "title": "Years",
+          "type": "integer"
+        },
+        "months": {
+          "default": 0,
+          "title": "Months",
+          "type": "integer"
+        },
+        "weeks": {
+          "default": 0,
+          "title": "Weeks",
+          "type": "integer"
+        },
+        "days": {
+          "default": 0,
+          "title": "Days",
+          "type": "integer"
+        },
+        "hours": {
+          "default": 0,
+          "title": "Hours",
+          "type": "integer"
+        },
+        "minutes": {
+          "default": 0,
+          "title": "Minutes",
+          "type": "integer"
+        },
+        "seconds": {
+          "default": 0,
+          "title": "Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "Custom",
+      "type": "object"
+    },
+    "PresetPreviousPeriod": {
+      "properties": {
+        "preset": {
+          "default": "1 month back",
+          "description": "Choose a predefined time offset.",
+          "enum": [
+            "Same as current period",
+            "1 month back",
+            "3 months back",
+            "6 months back",
+            "1 year back"
+          ],
+          "title": "Preset",
+          "type": "string"
+        }
+      },
+      "title": "Preset",
       "type": "object"
     },
     "TimeFrequency": {
@@ -180,9 +292,10 @@
     "ui:order": [
       "workflow_details",
       "time_range",
+      "gee_client",
       "er_client_name",
-      "time_frequency",
-      "previous_period_range"
+      "set_previous_period",
+      "time_frequency"
     ]
   },
   "additionalProperties": false

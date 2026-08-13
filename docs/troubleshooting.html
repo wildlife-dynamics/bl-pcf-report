@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Troubleshooting — BL PCF Report</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">BL PCF Report</a>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="user-guide.html">User Guide</a>
+        <a href="technical-guide.html">Technical Guide</a>
+        <a href="troubleshooting.html" class="active">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/bl_pcf_report">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Troubleshooting</h1>
+    <p class="lede">Common issues encountered while configuring, running, or contributing to the BL PCF Report workflow, and how to resolve them. If your issue isn't listed here, open an issue on <a href="https://github.com/wildlife-dynamics/bl_pcf_report/issues">GitHub</a>.</p>
+
+    <h2>Configuration &amp; Connections</h2>
+
+    <div class="error-block">
+      <p class="symptom">Workflow errors out with no current-period events found</p>
+      <p>The current-period event fetch sets <code>raise_on_empty: true</code>, so if EarthRanger has zero <code>hwc_lvstprd</code> events for your selected time range, the workflow raises an explicit error. Widen the time range or confirm the events exist under that event type in EarthRanger. The <em>previous</em>-period fetch sets <code>raise_on_empty: false</code> &mdash; a comparison period with no events is expected and handled gracefully (the historic chart branch is simply skipped for that ranch).</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">EarthRanger connection fails or times out</p>
+      <p>Verify the server URL, username, and password configured in the <a href="user-guide.html#connection">EarthRanger Connection</a>. Confirm you can log into that same EarthRanger instance directly in a browser with the same credentials. Credentials aren't validated at setup time, so an invalid password only surfaces as an error once the workflow actually runs.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Form requires a Google Earth Engine connection, but I don't have one / it doesn't seem to do anything</p>
+      <p>This is expected &mdash; the <a href="user-guide.html#gee">Set GEE Connection</a> field is required to submit the form, but no task in <code>spec.yaml</code> currently reads from it. Select any configured GEE data source (or create a placeholder one) to get past this field; it has no effect on the report.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Almost everything is empty even though EarthRanger has predation events</p>
+      <p>Two filters run before any chart, map, or table is built: events must have <code>Ranch</code> exactly matching <strong>Eselengei</strong>, <strong>Mbirikani</strong>, or <strong>Kimana</strong>, and <code>"Validity of claim"</code> exactly equal to <strong>"Valid"</strong>. If your EarthRanger event form uses different ranch names, different capitalisation, or a different claim-validity label, those events are silently dropped rather than causing an error &mdash; check the raw event details for spelling/casing mismatches.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Amboseli geospatial layers or the Word template fail to download</p>
+      <p>The three Amboseli GeoPackages and the Word report template are fetched from fixed Dropbox share links in <code>spec.yaml</code>. These links carry an expiring share token (<code>st=</code> parameter); if a link has been rotated or revoked on Dropbox's side, <code>fetch_and_persist_file</code> will exhaust its 3 retries and fail. This isn't a workflow configuration issue &mdash; the URLs in <code>spec.yaml</code> would need to be refreshed.</p>
+    </div>
+
+    <h2>Previous Period &amp; Historic Chart</h2>
+
+    <div class="error-block">
+      <p class="symptom">Historic comparison chart is missing for one or more ranches</p>
+      <p>The historic chart is built per ranch from the zipped current + previous period partitions. If a ranch has no previous-period events (or no current-period events) after filtering, that ranch's chart is skipped &mdash; the other ranches' charts still render normally. This is expected fan-out behaviour, not a workflow-wide failure.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Historic chart's confidence band looks too wide or too narrow</p>
+      <p>The band is a 95% CI around the historic mean (<code>band_method: ci_mean</code>, <code>band_level: 0.95</code>), computed per <code>Animal responsible</code> facet from whatever previous-period data your <a href="user-guide.html#previous-period">Previous Period</a> selection produced. A short or sparse comparison window produces a wide, low-confidence band &mdash; widen the Previous Period offset (e.g. switch Custom to a larger number of months, or choose a Preset further back) for a more stable estimate.</p>
+    </div>
+
+    <h2>Charts, Tables &amp; Maps</h2>
+
+    <div class="error-block">
+      <p class="symptom">A predator, boma type, claim type, ranch, or livestock-species value is missing from a chart, or renders in a fallback colour</p>
+      <p>Every colour-mapped category (see the Technical Guide's Colour Mapping section) has an explicit hex colour; any value not in that mapping falls back to a pale default (<code>#f0f8ff</code>), and <code>keep_unmapped: false</code> means unmapped rows can be dropped entirely rather than shown with the fallback. If a chart is missing a category you expect, check whether the underlying EarthRanger field uses a value not covered by the workflow's colour mapping.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Livestock killed total doesn't match manual counting</p>
+      <p><code>total_animals_killed</code> is computed as <code>total_adult_livestock_killed + total_young_livestock_killed</code>, where each of those is itself a fallback-combined value (a primary detail field, falling back to a secondary field if the primary is null, then to 0). If an event has values in both the primary and fallback fields, only the primary is used &mdash; check which field a given event actually populated in EarthRanger.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Per-ranch output files are named "Eselengei", "Mbirikani", "Kimana" instead of something more descriptive</p>
+      <p>This is expected &mdash; the per-ranch summary tables are persisted with the ranch name itself as the filename (e.g. a GeoParquet file literally named <code>Eselengei</code>), not a compound name like <code>overall_predation_summary_Eselengei</code>.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Map PNG is blank, cut off, or missing in the Word report</p>
+      <p>All three maps wait 40&nbsp;000&nbsp;ms for the basemap tiles to load before capturing the screenshot &mdash; far longer than the 1&ndash;10&nbsp;ms wait used for the Plotly charts, which render client-side without external tile requests. On a slow network this can still be insufficient for a consistently complete tile render.</p>
+    </div>
+
+    <h2>Report &amp; Dashboard</h2>
+
+    <div class="error-block">
+      <p class="symptom">Word report is missing an image, or fails to generate</p>
+      <p><code>generate_pcf_report</code> runs with <code>validate_images: true</code>, which checks that every expected chart/map image exists before populating the template. If any upstream chart or PNG conversion failed or was skipped (e.g. due to an empty ranch partition), report generation will fail rather than produce a document with blank placeholders.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Word report always says "Generated by Ecoscope"</p>
+      <p>This is expected &mdash; <code>generated_by</code> is a fixed string in <code>spec.yaml</code>, not looked up from the EarthRanger user who ran the workflow.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Dashboard has fewer than 24 widgets, or a ranch is missing from a merged widget</p>
+      <p>Two widgets on the dashboard &mdash; <em>Historic Predation Trend by Ranch</em> and <em>Predation Summary by Ranch</em> &mdash; are merged multi-view widgets built from the same per-ranch fan-out described above. If a ranch had no data for one branch, that ranch's view is simply absent from the merged widget rather than the whole widget failing.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">No outputs written / can't find results</p>
+      <p>All outputs are written to the directory specified by the <code>ECOSCOPE_WORKFLOWS_RESULTS</code> environment variable. Confirm it's set and points to a directory the workflow process can write to.</p>
+    </div>
+
+    <h2>Contributing &amp; CI</h2>
+    <p>These apply if you're modifying the workflow itself (<code>spec.yaml</code>, <code>test-cases.yaml</code>, or the generated <code>ecoscope-workflows-bl-pcf-report-workflow/</code> directory) and opening a pull request.</p>
+
+    <div class="error-block">
+      <p class="symptom"><code>ecoscope-workflows-bl-pcf-report-workflow/</code> is missing from your checkout</p>
+      <p>This generated directory is tracked in git but can be absent from a local working tree (e.g. after a partial checkout or an interrupted recompile). Regenerate it before committing anything:</p>
+      <pre><code>pixi run --manifest-path pixi.toml --locked bash -c "./dev/recompile.sh --update"</code></pre>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>Generated files differ from committed files in ecoscope-workflows-bl-pcf-report-workflow</code></p>
+      <p>The generated workflow directory is out of sync with <code>spec.yaml</code>. Run the recompile script locally and commit the result (same command as above).</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>test-cases.yaml</code> references a <code>calculator</code> task that doesn't exist in this workflow</p>
+      <p>The current <code>test-cases.yaml</code> still contains <code>calculator</code> parameters (<code>a</code>, <code>b</code>, <code>operation</code>) left over from the workflow scaffold &mdash; <code>spec.yaml</code> has no task with that id. If you're updating test cases, replace these with parameters for the tasks this workflow actually exposes (<code>workflow_details</code>, <code>time_range</code>, <code>gee_client</code>, <code>er_client_name</code>, the previous-period offset, and <code>time_frequency</code>).</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>Found wildcard version (*) in requirements</code> or <code>Found local file channel (file://) in requirements</code></p>
+      <p>In <code>spec.yaml</code>, every dependency under <code>requirements</code> must pin an exact version and use a remote conda channel &mdash; wildcard versions and local <code>file://</code> channels are only valid for local development, not for CI using published packages.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom"><code>VERSION.yaml (...) must be greater than main branch (...)</code></p>
+      <p>Bump <code>MAJ</code>/<code>MIN</code>/<code>PATCH</code> in <code>ecoscope-workflows-bl-pcf-report-workflow/VERSION.yaml</code> so it's strictly greater than the version on <code>main</code> before opening or updating a PR.</p>
+    </div>
+
+    <div class="error-block">
+      <p class="symptom">Workflow tests fail in CI but pass locally (or vice versa)</p>
+      <p><code>test.yml</code> runs test cases against all of <code>ubuntu-latest</code>, <code>macos-latest</code>, and <code>windows-latest</code>. If a test only fails on CI, check whether it depends on EarthRanger credentials being available as secrets, or on OS-specific path handling.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>BL PCF Report &middot; <a href="https://github.com/wildlife-dynamics/bl_pcf_report">wildlife-dynamics/bl_pcf_report</a> on GitHub</p>
+  </footer>
+</body>
+</html>

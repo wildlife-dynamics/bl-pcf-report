@@ -1,6 +1,6 @@
 # BL PCF Report — User Guide
 
-This guide walks you through configuring and running the Big Life PCF Report workflow, which ingests livestock predation events from EarthRanger and produces a comprehensive Predator Compensation Fund incident analysis report for the Amboseli ecosystem.
+This guide walks you through configuring and running the Big Life PCF Report workflow, which ingests livestock predation events from EarthRanger and produces a comprehensive Predator Compensation Fund incident analysis report and dashboard for the Amboseli ecosystem.
 
 ---
 
@@ -8,10 +8,16 @@ This guide walks you through configuring and running the Big Life PCF Report wor
 
 The workflow delivers, for each run:
 
-- **Charts** — pie charts by predator, ranch, and attack location; stacked bar charts by claim type and predator; time-of-day bar chart; multi-line and multi-bar time-series charts; and per-ranch historic comparison charts
-- **Maps** — predation incident density grid, boma-attack density grid, and livestock species scatter map
-- **Summary tables** — overall predation summary, per-ranch summaries, claim-type breakdown, predator breakdown, location analysis, and boma incident statistics
-- A **Word document report** — all charts, maps, and tables assembled into the Big Life PCF report template
+- **Charts** — pie charts by predator, ranch, and attack location; stacked bar charts by claim type and predator; a time-of-day bar chart; multi-line and multi-bar time-series charts; and per-ranch historic (current vs. previous period) comparison charts
+- **Maps** — an overall predation-incident density grid, a boma-attack density grid, and a livestock-species scatter map, all overlaid on the Amboseli land use, ranch boundary, and electric fence layers
+- **Summary tables** — an overall predation summary, per-ranch summaries, and breakdown tables by claim type, predator species, attack location, and boma type
+- **Data files** — the underlying current- and previous-period event tables, plus a GeoParquet file for every summary/breakdown table
+- A **Word document report** (`overall_report.docx`) — every chart, map, and table assembled into the Big Life PCF report template, downloaded automatically from Dropbox
+- An **interactive dashboard** — 24 widgets covering every chart, map, and table produced by the run (including a single merged, ranch-switchable widget for the historic comparison charts and another for the per-ranch summary tables)
+
+The analysis is restricted to three target ranches — **Eselengei**, **Mbirikani**, and **Kimana** — and to events marked as **valid claims** only.
+
+The three Amboseli geospatial layers and the Word report template are downloaded automatically from Dropbox at run time. No additional setup is required for these.
 
 ---
 
@@ -19,7 +25,9 @@ The workflow delivers, for each run:
 
 Before running the workflow, ensure you have:
 
-- Access to an **EarthRanger** instance with `hwc_lvstprd` livestock predation events logged for the analysis period
+- Access to an **EarthRanger** instance with `hwc_lvstprd` (livestock predation) events logged for the analysis period
+
+> The workflow configuration form also asks you to select a **Google Earth Engine** data source (see Step 4 below). No task in this workflow currently uses that connection — any configured GEE source will satisfy the field. See [Troubleshooting](docs/troubleshooting.html) for details.
 
 ---
 
@@ -35,8 +43,6 @@ https://github.com/wildlife-dynamics/bl_pcf_report.git
 
 Then click **Add Template**.
 
-![Add Workflow Template](data/screenshots/add_workflow.png)
-
 ---
 
 ### Step 2 — Add an EarthRanger Connection
@@ -51,8 +57,6 @@ Navigate to **Data Sources** and click **Connect**. Select **EarthRanger** from 
 
 Click **Connect** to save.
 
-![EarthRanger Connection](data/screenshots/er_connection.png)
-
 ---
 
 ### Step 3 — Select the Workflow
@@ -60,8 +64,6 @@ Click **Connect** to save.
 After the template is added, it appears in the **Workflow Templates** list as **bl_pcf_report**. Click it to open the workflow configuration form.
 
 > The card may show **Initializing…** briefly while the environment is set up.
-
-![Select Workflow Template](data/screenshots/select_template.png)
 
 ---
 
@@ -86,21 +88,37 @@ The configuration form opens with two sections at the top.
 
 All livestock predation events are fetched within this window. The analysis covers incidents from the three target ranches — Eselengei, Mbirikani, and Kimana — restricted to valid claims only.
 
-![Set Workflow Details and Report Time Range](data/screenshots/configure_workflow_time_range.png)
+---
+
+### Step 5 — Set GEE Connection
+
+Select any configured Google Earth Engine data source from the **Data Source** dropdown. This field is required to submit the form, but no chart, map, or table in this workflow currently depends on it.
 
 ---
 
-### Step 5 — Connect to EarthRanger and Select Time Frequency
-
-Scroll down to configure the final two sections.
-
-**Connect to EarthRanger**
+### Step 6 — Connect to EarthRanger
 
 Select the EarthRanger data source configured in Step 2 from the **Data Source** dropdown (e.g. `Amboseli Trust for Elephants`).
 
-**Select time frequency for temporal charts**
+---
 
-Choose the temporal aggregation unit used by all multi-line and multi-bar time-series charts in the report:
+### Step 7 — Previous Period
+
+Define the comparison ("previous") period used by the per-ranch historic charts. Every option computes a period that ends on your selected time range's **Start Date** (so it never overlaps with the current period) — only the comparison period's own start date changes:
+
+| Mode | Behaviour |
+|------|-----------|
+| **Custom** | Enter your own Years / Months / Weeks / Days offset (defaults to 1 month back) |
+| **Preset** | Choose a common lookback — e.g. 1, 3, or 6 months, or 1 year back |
+| **Calendar** | Pick an exact Start Date for the comparison period |
+
+If no previous-period events are found, the workflow continues gracefully — downstream charts and tables for that branch are simply skipped rather than the run failing.
+
+---
+
+### Step 8 — Select Time Frequency
+
+Choose the temporal aggregation unit used by all multi-line and multi-bar time-series charts, and by the per-ranch historic comparison charts:
 
 | Option | Description |
 |--------|-------------|
@@ -109,26 +127,26 @@ Choose the temporal aggregation unit used by all multi-line and multi-bar time-s
 | **Weekly** | Aggregate by ISO week number |
 | **Daily** | Aggregate by individual day |
 
-Select **Annual** to generate year-over-year historic comparison charts per ranch.
-
-![Connect to EarthRanger and Select Time Frequency](data/screenshots/connect_to_er_time_frequency.png)
+Once all sections are filled, click **Submit**.
 
 ---
 
 ## Running the Workflow
 
-Once all parameters are configured, click **Submit**. The runner will:
+Once submitted, the runner will:
 
-1. Download the Amboseli land-use, ranch boundary, and electric fence layers from Dropbox.
-2. Fetch `hwc_lvstprd` events from EarthRanger for the specified time range.
-3. Normalise event details (field titles, numeric conversions, missing value handling).
-4. Filter events to Eselengei, Mbirikani, and Kimana ranches with valid claims only.
-5. Compute overall and per-ranch summary tables (incidents, livestock killed, compensation value).
-6. Generate all charts and persist as HTML and PNG.
-7. Generate the predation density map, boma density map, and livestock species scatter map.
-8. Look up the current EarthRanger user's name for report attribution.
-9. Populate the Big Life PCF Word template with all outputs.
-10. Save all files to the directory specified by `ECOSCOPE_WORKFLOWS_RESULTS`.
+1. Download the Amboseli land-use, ranch boundary, and electric fence layers from Dropbox and reproject them to EPSG:4326.
+2. Fetch `hwc_lvstprd` events from EarthRanger for the selected time range, and separately for the previous-period window.
+3. Normalise event details for both periods (field titles, JSON flattening, column renaming), then filter to the three target ranches and to valid claims only.
+4. Combine the digital adult/young livestock-kill counts (with fallbacks) into a single total per event, for both periods.
+5. Compute the overall and per-ranch summary tables (incidents, animals killed, compensation value), and the claim-type, predator, attack-location, and boma-type breakdown tables.
+6. Assign a colour to every relevant category (predator, boma type, attack location, claim type, ranch, livestock species) and render all pie, stacked-bar, time-of-day, and multi-line/multi-bar charts.
+7. Build the per-ranch historic comparison chart (current period vs. the previous period's mean and 95% confidence band).
+8. Build the livestock-species scatter map, the overall predation density grid, and the boma-attack density grid — each overlaid on the Amboseli base layers.
+9. Convert every chart and map to PNG.
+10. Download the Big Life PCF Word template from Dropbox and populate it with every chart, map, and table.
+11. Assemble the 24-widget dashboard.
+12. Save all outputs to the directory specified by `ECOSCOPE_WORKFLOWS_RESULTS`.
 
 ---
 
@@ -136,23 +154,56 @@ Once all parameters are configured, click **Submit**. The runner will:
 
 All outputs are written to `$ECOSCOPE_WORKFLOWS_RESULTS/`:
 
+### Event data
+
 | File | Description |
 |------|-------------|
-| `livestock_killed_by_predator_pie.html` / `.png` | Pie chart — livestock killed by predator species |
-| `compensation_value_by_predator_pie.html` / `.png` | Pie chart — compensation value by predator species |
-| `compensation_value_by_ranch_pie.html` / `.png` | Pie chart — compensation value by ranch |
-| `livestock_attack_location_pie.html` / `.png` | Pie chart — attack location distribution |
-| `boma_type_targeted_pie.html` / `.png` | Pie chart — boma type (Permanent vs Temporary) |
-| `livestock_killed_by_claim_type_bar.html` / `.png` | Stacked bar — livestock killed by claim type × ranch |
-| `claim_count_by_type_bar.html` / `.png` | Stacked bar — claim count by claim type × ranch |
-| `livestock_killed_by_predator_pct_bar.html` / `.png` | 100% stacked bar — livestock killed % by predator × ranch |
-| `predation_incidents_by_time_of_day_bar.html` / `.png` | Bar chart — incidents by time of day bin |
-| `livestock_killed_over_time_by_ranch_chart.html` / `.png` | Multi-line — livestock killed over time by ranch |
-| `livestock_killed_over_time_by_attack_location_chart.html` / `.png` | Multi-line — livestock killed over time by attack location |
-| `claim_count_over_time_by_type_chart.html` / `.png` | Multi-line — claim count over time by claim type |
-| `livestock_killed_over_time_by_predator_mulit_bar_chart.html` / `.png` | Multi-bar — animals killed per predator over time |
-| `ranch_level_historic_time_series_chart_<ranch>.html` / `.png` | Historic comparison chart per ranch |
-| `predation_incident_density_map.html` / `.png` | Density grid — all predation incidents |
-| `boma_predation_density_map.html` / `.png` | Density grid — boma attacks only |
-| `livestock_predation_event_map.html` / `.png` | Scatter map — livestock species |
-| `big_life_pcf_report.docx` | Final populated Word PCF report |
+| `current_events.csv` | Cleaned, filtered current-period events, one row per valid claim |
+| `previous_events.csv` | Cleaned, filtered previous-period events, one row per valid claim |
+
+### Summary tables (GeoParquet, plus an equivalent `.html` for each dashboard table widget)
+
+| File | Description |
+|------|-------------|
+| `overall_predation_summary` | Incidents, animals killed, and compensation value by predator, overall |
+| `<ranch>` (one file per ranch, named after the ranch) | The same summary, computed separately for each ranch |
+| `livestock_killed_by_claim_type` | Animals killed, by claim type × ranch |
+| `livestock_killed_by_predator_species` | Animals killed, by predator species × ranch |
+| `livestock_attacks_by_location` | Incident count and percentage, by attack location |
+| `predation_incidents_by_predator_and_location` | Incident count and percentage, by predator × attack location |
+| `predation_incidents_by_boma_type` | Incident count and percentage, by boma type |
+
+### Charts (`.html` + `.png`)
+
+| File | Description |
+|------|-------------|
+| `livestock_killed_by_predator_pie` | Pie — animals killed by predator |
+| `compensation_value_by_predator_pie` | Pie — compensation value by predator |
+| `compensation_value_by_ranch_pie` | Pie — compensation value by ranch |
+| `livestock_killed_by_claim_type_bar` | Stacked bar — animals killed by claim type × ranch |
+| `claim_count_by_type_bar` | Stacked bar — claim count by claim type × ranch |
+| `livestock_killed_by_predator_pct_bar` | 100%-stacked bar — animals killed share by predator × ranch |
+| `livestock_attack_location_pie` | Pie — attack location distribution |
+| `boma_type_targeted_pie` | Pie — boma type targeted (Permanent vs. Temporary) |
+| `predation_incidents_by_time_of_day_bar` | Bar — incidents by time-of-day bin |
+| `livestock_killed_over_time_by_ranch_chart` | Multi-line — animals killed over time, by ranch |
+| `livestock_killed_over_time_by_attack_location_chart` | Multi-line — animals killed over time, by attack location |
+| `claim_count_over_time_by_type_chart` | Multi-line — claim count over time, by claim type |
+| `livestock_killed_over_time_by_predator_mulit_bar_chart` | Multi-bar (faceted per predator) — animals killed over time |
+| `ranch_level_historic_time_series_chart_<ranch>` (one per ranch) | Current period vs. historic mean/95% CI, faceted by predator |
+
+### Maps (`.html` + `.png`)
+
+| File | Description |
+|------|-------------|
+| `livestock_predation_event_map` | Scatter map of individual events, coloured by livestock species |
+| `predation_incident_density_map` | Density grid of all valid predation incidents |
+| `boma_predation_density_map` | Density grid of incidents inside a boma only |
+
+### Report
+
+| File | Description |
+|------|-------------|
+| `overall_report.docx` | Final populated Big Life PCF Word document |
+
+For more detail on how each output is built, see the [Technical Guide](docs/technical-guide.html).

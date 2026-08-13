@@ -122,6 +122,7 @@ story += [
     sp(4),
     p("Predator Compensation Fund — Livestock Predation Incident Analysis", SUBTITLE),
     sp(4),
+    p("Version 2.0", META),
     p(f"Generated {date.today().strftime('%B %d, %Y')}", META),
     p("Workflow id: <b>bl_pcf_report</b>", META),
     PageBreak(),
@@ -136,38 +137,49 @@ story += [
     p("The <b>bl_pcf_report</b> workflow ingests livestock predation events "
       "(event type <b>hwc_lvstprd</b>) from EarthRanger for the Amboseli "
       "ecosystem and produces a comprehensive Predator Compensation Fund (PCF) "
-      "incident analysis report. The workflow covers three target ranches — "
-      "<b>Eselengei</b>, <b>Mbirikani</b>, and <b>Kimana</b> — and restricts "
-      "analysis to <b>valid claims</b> only."),
+      "incident analysis report and dashboard. The workflow covers three target "
+      "ranches — <b>Eselengei</b>, <b>Mbirikani</b>, and <b>Kimana</b> — and "
+      "restricts analysis to <b>valid claims</b> only."),
+    sp(4),
+    note(
+        "Version 2.0 rewrites this guide against the current <code>spec.yaml</code>. "
+        "It corrects the dependency list (migrated to <code>ecoscope-platform</code>), "
+        "the actual chart/task names (several task and function names in the "
+        "previous version did not match any task in <code>spec.yaml</code>), the "
+        "previous-period mechanism (now a flexible Custom/Preset/Calendar offset, "
+        "not a simple integer), the Word report's fixed <code>\"Ecoscope\"</code> "
+        "author field and <code>overall_report.docx</code> filename, and the "
+        "dashboard, which now wires up 24 widgets rather than an empty list. It "
+        "also documents the unused <code>gee_client</code> connection field and "
+        "the current/previous dual-pipeline in full."
+    ),
     sp(4),
     p("For each run the workflow delivers:"),
-    bullet("10 charts — pie charts by predator/ranch/location/boma type, stacked "
-           "bar charts by claim type and predator, time-of-day bar, multi-line "
-           "and multi-bar time-series, and historic comparison charts per ranch"),
-    bullet("3 maps — overall predation density grid, boma-attack density grid, "
-           "and livestock species scatter map"),
-    bullet("Summary tables — overall predation summary, per-ranch summaries, "
-           "claim-type breakdown, predator breakdown, location analysis, and "
-           "boma incident statistics"),
-    bullet("A Word document report — all charts, maps, and tables assembled into "
-           "the Big Life PCF report template"),
+    bullet("14 distinct chart-drawing steps, producing 19 chart files (some fan out per ranch) — pie, stacked bar, time-of-day bar, multi-line and multi-bar time series, and a faceted historic comparison chart per ranch"),
+    bullet("3 maps — overall predation density grid, boma-attack density grid, and a livestock-species scatter map"),
+    bullet("13 summary/breakdown tables (GeoParquet + HTML) — an overall summary, one per-ranch summary per ranch, and breakdowns by claim type, predator, attack location, and boma type"),
+    bullet("2 raw event data files (CSV) — cleaned current- and previous-period events"),
+    bullet("A Word document report (overall_report.docx) — every chart, map, and table assembled into the Big Life PCF report template"),
+    bullet("A 24-widget interactive dashboard"),
     sp(6),
     h2("Output summary"),
     make_table(
         [
             ["Output type", "Count", "Description"],
-            ["Pie charts", "4", "Livestock killed and compensation value by predator, ranch, and attack location; boma type targeted"],
-            ["Stacked bar charts", "3", "Livestock killed and claim count by Type of claim × Ranch; 100% stacked by predator × Ranch"],
+            ["Pie charts", "5", "Killed & compensation by predator, compensation by ranch, attack location, boma type targeted"],
+            ["Stacked bar charts", "3", "Killed & claim count by claim type × ranch; 100%-stacked killed by predator × ranch"],
             ["Time-of-day bar chart", "1", "Predation incidents by 4-hour time bin"],
             ["Multi-line time series", "3", "Killed over time by ranch, by attack location, and claim count over time by type"],
-            ["Multi-bar time series", "1", "Animals killed over time per predator (2-column grid)"],
-            ["Historic comparison charts", "3", "Per-ranch current vs. historic mean with 95% CI (one per ranch)"],
+            ["Multi-bar time series", "1", "Animals killed over time per predator (faceted, 2-column grid)"],
+            ["Historic comparison chart", "1 task → 3 files", "Current vs. historic mean with 95% CI, faceted by predator, one file per ranch"],
             ["Density grid maps", "2", "All predation incidents; boma attacks only"],
             ["Scatter map", "1", "Livestock species scatter map"],
-            ["Summary tables (GeoParquet)", "6+", "Overall, per-ranch, claim type, predator, location, boma"],
-            ["Word document", "1", "big_life_pcf_report.docx"],
+            ["Summary/breakdown tables (GeoParquet + HTML)", "13", "Overall, 3× per-ranch, claim type, predator, location, predator×location, boma"],
+            ["Raw event data (CSV)", "2", "current_events.csv, previous_events.csv"],
+            ["Word document", "1", "overall_report.docx"],
+            ["Dashboard widgets", "24", "Every chart, map, and table above; ranch-level charts/tables merged into 2 switchable widgets"],
         ],
-        [3.5*cm, 2*cm, W - 5.5*cm],
+        [5*cm, 3*cm, W - 8*cm],
     ),
     PageBreak(),
 ]
@@ -179,25 +191,35 @@ story += [
     h1("2. Dependencies"),
     hr(),
     h2("2.1  Python packages"),
-    p("The workflow declares seven versioned packages from the Ecoscope "
-      "prefix.dev channels:"),
+    p("The workflow declares eight versioned packages, resolved from the "
+      "Ecoscope prefix.dev channels:"),
     make_table(
         [
             ["Package", "Version", "Channel"],
-            ["ecoscope-workflows-core",       "0.22.17.*", "ecoscope-workflows"],
-            ["ecoscope-workflows-ext-ecoscope","0.22.17.*", "ecoscope-workflows"],
-            ["ecoscope-workflows-ext-custom",  "0.0.39.*",  "ecoscope-workflows-custom"],
-            ["ecoscope-workflows-ext-ste",     "0.0.17.*",  "ecoscope-workflows-custom"],
-            ["ecoscope-workflows-ext-mnc",     "0.0.7.*",   "ecoscope-workflows-custom"],
-            ["ecoscope-workflows-ext-mep",     "0.12.0.*",  "ecoscope-workflows-custom"],
-            ["ecoscope-workflows-ext-big-life","0.0.11.*",  "ecoscope-workflows-custom"],
+            ["ecoscope-platform",                  "2.18.0",       "ecoscope-workflows"],
+            ["ecoscope-workflows-ext-custom",       "0.1.0rc14.*",  "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-ste",          "0.0.0rc1.*",   "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-mnc",          "1.0.0.*",      "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-wwf-virunga",  "0.0.0rc9.*",   "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-big-life",     "1.0.0.*",      "ecoscope-workflows-custom"],
+            ["pydeck",                              "0.9.2",        "conda-forge"],
+            ["opentelemetry-sdk",                   "&gt;=1.20.0,&lt;2.0.0", "conda-forge"],
         ],
-        [6.5*cm, 3*cm, W - 9.5*cm],
+        [7*cm, 3.5*cm, W - 10.5*cm],
+    ),
+    p(
+        "The chart-drawing tasks (pie, bar, multi-line, multi-bar, faceted "
+        "historic time series) come from <code>ecoscope-workflows-ext-wwf-virunga</code>. "
+        "<code>fill_missing_values</code> and the integer-conversion helper come from "
+        "<code>ecoscope-workflows-ext-mnc</code>. The Dropbox fetch, previous-period "
+        "calculation, envelope/view-state, and map-layer combination tasks come from "
+        "<code>ecoscope-workflows-ext-ste</code>. The Word-report generation task "
+        "comes from <code>ecoscope-workflows-ext-big-life</code>."
     ),
     sp(6),
     h2("2.2  External data — static Amboseli layers"),
     p("Three GeoPackage files are downloaded from Dropbox at run time and "
-      "cached locally (overwrite_existing: false, 3 retries):"),
+      "cached locally (<code>overwrite_existing: false</code>, 3 retries):"),
     make_table(
         [
             ["File", "Purpose"],
@@ -206,7 +228,7 @@ story += [
             ["amboseli_group_ranch_boundaries_x_electric_fence.gpkg",
              "Ranch boundaries and electric fence overlay"],
             ["amboseli_group_ranch_boundaries.gpkg",
-             "Conservancy boundary polygons (used for spatial context)"],
+             "Conservancy boundary polygons (reprojected, not otherwise used downstream)"],
         ],
         [8*cm, W - 8*cm],
     ),
@@ -215,27 +237,36 @@ story += [
     p("Two ESRI tile layers are composited for every map:"),
     make_table(
         [
-            ["Layer", "Opacity", "Role"],
-            ["ESRI World Hillshade", "1.0", "Terrain relief base layer"],
-            ["ESRI World Street Map", "0.15", "Faint street/label overlay"],
+            ["Layer", "Opacity", "Max zoom"],
+            ["ESRI World Hillshade", "1.0", "20"],
+            ["ESRI World Street Map", "0.15", "20"],
         ],
-        [5*cm, 2*cm, W - 7*cm],
+        [5*cm, 3*cm, W - 8*cm],
     ),
     sp(6),
     h2("2.4  EarthRanger connection"),
-    p("A single EarthRanger connection (<b>set_er_connection</b>) is required. "
-      "The client is reused to fetch events, look up the current user's name for "
-      "report attribution, and retrieve the user's full name via "
-      "<b>get_user_full_name</b>."),
+    p("A single EarthRanger connection (<code>set_er_connection</code>) is "
+      "required and reused for both the current- and previous-period event fetches."),
     sp(6),
-    h2("2.5  Grouper"),
-    p("The workflow groups data by the <b>Ranch</b> column. This grouper drives "
-      "per-ranch table splits and the ranch-level historic time-series charts."),
+    h2("2.5  Google Earth Engine connection (unused)"),
+    note(
+        "The workflow form includes a <b>Set GEE connection</b> field "
+        "(<code>set_gee_connection</code>) that is never referenced by any "
+        "downstream task in <code>spec.yaml</code> — this workflow performs no "
+        "NDVI or other Earth-Engine analysis. It appears to be a leftover from "
+        "an earlier template. Any configured GEE data source will satisfy the field."
+    ),
     sp(6),
-    h2("2.6  Time frequency"),
-    p("A user-selectable <b>time_frequency</b> parameter (via "
-      "<b>select_time_frequency</b>) controls the temporal aggregation unit "
-      "used by all multi-line and multi-bar time-series charts."),
+    h2("2.6  Grouper"),
+    p("The workflow groups data by the <b>Ranch</b> column (fixed via "
+      "<code>set_groupers</code>, not user-configurable). This grouper drives "
+      "every per-ranch table split and the ranch-level historic chart fan-out."),
+    sp(6),
+    h2("2.7  Time frequency"),
+    p("A user-selectable <code>time_frequency</code> parameter "
+      "(<code>select_time_frequency</code> — Annual / Monthly / Weekly / Daily) "
+      "controls the temporal aggregation unit used by all multi-line and "
+      "multi-bar time-series charts, and by the historic comparison chart."),
     PageBreak(),
 ]
 
@@ -245,75 +276,88 @@ story += [
 story += [
     h1("3. Data Ingestion and Processing"),
     hr(),
-    h2("3.1  Event fetch"),
-    p("Events of type <b>hwc_lvstprd</b> (livestock predation) are fetched from "
-      "EarthRanger for the configured time range. Two parallel pipelines process "
-      "the same event fetch result — one for the <b>current period</b> and one "
-      "for the <b>previous period</b> — each passing through identical "
-      "transformation steps."),
+    h2("3.1  Dual pipeline — current and previous period"),
+    p(
+        "Events of type <code>hwc_lvstprd</code> are fetched twice: once for the "
+        "selected time range (<code>get_current_events</code>, "
+        "<code>raise_on_empty: true</code>) and once for the comparison period "
+        "(<code>get_previous_events</code>, <code>raise_on_empty: false</code>, "
+        "so an empty previous period doesn't fail the run). Both event sets pass "
+        "through an identical transformation chain before diverging into the "
+        "overall/per-ranch summaries and the historic comparison chart."
+    ),
     sp(6),
-    h2("3.2  Previous period"),
-    p("The previous period is computed by <b>shift_previous_period</b>. "
-      "The <b>periods_back</b> parameter defaults to <b>1</b> (the immediately "
-      "preceding period of equal length) and is user-configurable — set a higher "
-      "value to compare against a more distant reference window. This enables "
-      "historic comparison in the ranch-level time-series charts."),
+    h2("3.2  Previous period calculation"),
+    p(
+        "The comparison window is computed by "
+        "<code>ecoscope_workflows_ext_ste.tasks.filter.flexible_previous_period</code> "
+        "(task id <code>set_previous_period</code>), which always ends the "
+        "comparison period on the current time range's start date, then works "
+        "backward. The user chooses one of three offset modes in the form: "
+        "<b>Custom</b> (Years/Months/Weeks/Days, default 1 month), <b>Preset</b> "
+        "(e.g. 1/3/6 months or 1 year back), or <b>Calendar</b> (an exact start date)."
+    ),
     sp(6),
     h2("3.3  Field normalisation"),
-    p("Each pipeline applies the following transformation sequence:"),
+    p("Each pipeline (current and previous) applies the same sequence:"),
     make_table(
         [
             ["Step", "Task", "Purpose"],
             ["1", "process_events_details",
-             "Converts EarthRanger field IDs to display names "
-             "(map_to_titles: true, ordered: true)"],
+             "Maps EarthRanger detail keys to their display titles (map_to_titles: true, ordered: true)"],
             ["2", "normalize_json_column",
-             "Flattens the nested event details JSON column into flat columns"],
-            ["3", "drop_column_prefix",
-             "Removes redundant column name prefixes introduced by normalisation"],
+             "Flattens the event_details JSON column into individual event_details__&lt;title&gt; columns"],
+            ["3", "drop_column_prefix (×2)",
+             "Strips the event_details__ prefix, then the hwc_lvstprd__ prefix, duplicate_strategy: keep_original"],
             ["4", "map_columns",
-             "Renames and retains only the required columns; drops 9 unused columns"],
+             "Drops ~30 unused detail columns (herder info, verification metadata, boma coordinates, etc.); retains the rest as-is"],
         ],
-        [1.5*cm, 4.5*cm, W - 6*cm],
+        [1.3*cm, 3.5*cm, W - 4.8*cm],
     ),
     sp(6),
     h2("3.4  Filtering"),
-    p("After normalisation two filters are applied in sequence:"),
-    bullet("<b>Ranch filter</b> — retains only rows where Ranch is one of "
-           "Eselengei, Mbirikani, or Kimana"),
-    bullet("<b>Validity filter</b> — retains only rows where "
-           '"Validity of claim" == "Valid"'),
+    p("Two filters are applied in sequence, via <code>filter_row_values</code>:"),
+    bullet("<b>Ranch filter</b> — retains only rows where <code>Ranch</code> is one of Eselengei, Mbirikani, or Kimana"),
+    bullet('<b>Validity filter</b> — retains only rows where <code>"Validity of claim"</code> == <code>"Valid"</code>'),
     sp(6),
-    h2("3.5  Missing value handling"),
-    p("Two passes of <b>replace_missing_with_label</b> fill blank values with "
-      "context-appropriate labels:"),
+    h2("3.5  Livestock-kill totals"),
+    p(
+        "The adult and young kill counts are each combined from two possible "
+        "source columns via <code>create_combined_column</code> (primary column, "
+        "with a fallback if the primary is null, <code>fill_remaining: 0</code>):"
+    ),
     make_table(
         [
-            ["Pass", "Label applied", "Fields targeted"],
-            ["1", "N/A",
-             "Did anyone see the predator, Did the predator enter boma, "
-             "Did the predator scare livestock from inside boma, "
-             "Does boma have LED simba lights, Does boma have predator proof fencing, "
-             "Predator Scout present, Tracks present"],
-            ["2", "Unknown",
-             "Boma type, Livestock species, Predator Scout present, Ranch, "
-             "Time of attack, Type of claim, Validity of claim, "
-             "Where were the livestock when the attack happened, Animal responsible"],
+            ["Output column", "Primary column", "Fallback column"],
+            ["total_adult_livestock_killed", "Adults killed", "hwc_lvstpd_number_adults killed"],
+            ["total_young_livestock_killed", "Young (&lt;1yr) killed", "hwc_lvstprd_&lt;1yr"],
         ],
-        [1.2*cm, 2.5*cm, W - 3.7*cm],
+        [5*cm, 4.5*cm, W - 9.5*cm],
     ),
-    sp(6),
-    h2("3.6  Numeric conversion and derived columns"),
-    p("Five fields are cast to integer via <b>convert_to_int</b>:"),
-    bullet("Adults injured"),
-    bullet("Adults killed"),
-    bullet("Compensation value to owner"),
-    bullet("Young (&lt;1yr) injured"),
-    bullet("Young (&lt;1yr) killed"),
-    sp(4),
-    p("A derived column <b>Total animals killed</b> is then computed by "
-      "<b>combine_columns</b> (agg_func: sum) as:"),
-    p("<i>Total animals killed = Adults killed + Young (&lt;1yr) killed</i>", CODE),
+    p(
+        "<code>convert_column_values_to_numeric</code> then casts "
+        "<code>Compensation value to owner</code>, "
+        "<code>total_adult_livestock_killed</code>, and "
+        "<code>total_young_livestock_killed</code> to numeric, and "
+        "<code>fill_missing_values</code> fills any remaining nulls in those three "
+        "columns with <code>0</code>."
+    ),
+    p(
+        "A second <code>fill_missing_values</code> pass fills nulls in "
+        "<code>Animal responsible</code>, <code>Boma type</code>, "
+        "<code>Livestock species</code>, <code>Type of claim</code>, and "
+        "<code>Where were the livestock when the attack happened</code> with the "
+        "string <code>\"Unknown\"</code>."
+    ),
+    p(
+        "Finally, <code>apply_arithmetic_operation_over_rows</code> (operation: add) "
+        "computes the column every downstream chart and table is built from:"
+    ),
+    p("<i>total_animals_killed = total_adult_livestock_killed + total_young_livestock_killed</i>", CODE),
+    p(
+        "The cleaned current- and previous-period tables are persisted as "
+        "<code>current_events.csv</code> and <code>previous_events.csv</code>."
+    ),
     PageBreak(),
 ]
 
@@ -324,50 +368,40 @@ story += [
     h1("4. Summary Tables"),
     hr(),
     h2("4.1  Overall predation summary"),
-    p("Three overall crosstab tables are computed from the current-period events "
-      "and combined into a single summary via <b>summarize_predation_table</b>:"),
-    make_table(
-        [
-            ["Table id", "Rows", "Columns", "Values"],
-            ["current_total_incidents", "Ranch", "—", "Count of events (predation incidents)"],
-            ["current_total_killed",    "Ranch", "—", "Sum of Total animals killed"],
-            ["current_total_compensation", "Ranch", "—", "Sum of Compensation value to owner"],
-        ],
-        [4*cm, 2*cm, 2*cm, W - 8*cm],
+    p(
+        "Three crosstabs — incidents (count), animals killed (sum), and "
+        "compensation value (sum), each indexed by <code>Animal responsible</code> "
+        "with <code>Livestock species</code> as columns and a Total margin — are "
+        "computed from the current-period events via <code>crosstab_summary</code> "
+        "and combined into one table by <code>summarize_predation_table</code> "
+        "(<code>overall_summary_table</code>), then persisted as GeoParquet "
+        "(<code>overall_predation_summary</code>)."
     ),
-    sp(4),
-    p("The equivalent three previous-period crosstabs are computed and combined "
-      "via a second call to <b>summarize_predation_table</b>, enabling "
-      "current vs. previous comparisons in the Word report."),
     sp(6),
     h2("4.2  Per-ranch summaries"),
-    p("Events are split by Ranch using <b>mapvalues</b> (task: "
-      "<b>split_by_ranch</b> and <b>split_previous_by_ranch</b>). For each "
-      "ranch, three crosstabs (incidents, killed, compensation) are computed and "
-      "combined via <b>summarize_predation_table</b>, then formatted by "
-      "<b>format_ranch_summary</b>."),
+    p(
+        "<code>split_groups</code> partitions the current-period events by "
+        "<code>Ranch</code> (<code>split_by_ranch</code>). For each ranch, the "
+        "same three crosstabs are computed via <code>mapvalues</code> and combined "
+        "with <code>summarize_predation_table</code>. The ranch name for each "
+        "partition is extracted with <code>column_first_unique_value</code> and "
+        "zipped onto its summary table (<code>groupbykey</code>), so each ranch's "
+        "table is persisted under a filename equal to the ranch name itself "
+        "(e.g. a file literally named <code>Eselengei</code>)."
+    ),
     sp(6),
-    h2("4.3  Additional breakdown tables"),
+    h2("4.3  Breakdown tables"),
+    p("All computed from the current-period events via <code>crosstab_summary</code>, then formatted with <code>convert_columns_to_int</code> and <code>format_numbers_with_commas</code>:"),
     make_table(
         [
-            ["Table", "Dimensions", "Notes"],
-            ["claim_type_killed",
-             "Type of claim × Ranch",
-             "Total animals killed crosstab"],
-            ["predator_killed",
-             "Animal responsible × Ranch",
-             "Total animals killed crosstab"],
-            ["location_attack",
-             "Where were the livestock when the attack happened",
-             "Count and percentage of incidents"],
-            ["predation_by_predator_and_location",
-             "Animal responsible × attack location",
-             "Percentage format"],
-            ["boma_incidents",
-             "Boma type",
-             "Count and percentage (Permanent vs. Temporary)"],
+            ["Output id", "Rows × Columns", "Value"],
+            ["livestock_killed_by_claim_type", "Type of claim × Ranch", "sum(total_animals_killed)"],
+            ["livestock_killed_by_predator_species", "Animal responsible × Ranch", "sum(total_animals_killed)"],
+            ["livestock_attacks_by_location", "attack location (single dimension)", "count + percentage"],
+            ["predation_incidents_by_predator_and_location", "Animal responsible × attack location", "count of id, merged with per-predator incident totals and percentages"],
+            ["predation_incidents_by_boma_type", "Boma type (single dimension)", "count + percentage"],
         ],
-        [4.5*cm, 4*cm, W - 8.5*cm],
+        [5.5*cm, 6*cm, W - 11.5*cm],
     ),
     PageBreak(),
 ]
@@ -378,9 +412,14 @@ story += [
 story += [
     h1("5. Color Mapping"),
     hr(),
-    p("Six color maps are built via <b>get_color_map</b> and applied to the "
-      "events GeoDataFrame via <b>map_color_column_value</b>. Each map adds a "
-      "dedicated color column used by all downstream charts and maps."),
+    p(
+        "Six colour maps are assigned via <code>map_column_value</code>, each "
+        "adding a dedicated hex-colour column to the current-period events "
+        "GeoDataFrame. <code>add_rgba_columns_from_hex</code> then converts all "
+        "six into <code>&lt;column&gt;_rgba</code> variants — it is the "
+        "<code>_rgba</code> columns, not the raw hex columns, that are wired into "
+        "the chart and map <code>color_column</code> parameters."
+    ),
     sp(6),
     h2("5.1  Animal responsible"),
     make_table(
@@ -402,8 +441,8 @@ story += [
             ["Boma type",         "Permanent",                      "#fd7f6f"],
             ["Boma type",         "Temporary",                      "#7eb0d5"],
             ["Livestock location","Inside Boma",                    "#fd7f6f"],
-            ["Livestock location","Within 200m of Boma",            "#b2e061"],
             ["Livestock location","More than 200m from Boma",       "#7eb0d5"],
+            ["Livestock location","Within 200m of Boma",            "#b2e061"],
             ["Claim type",        "Bad Boma",                       "#beb9db"],
             ["Claim type",        "No Penalty",                     "#b2e061"],
             ["Claim type",        "Lost in the Bush",               "#7eb0d5"],
@@ -416,6 +455,7 @@ story += [
         ],
         [4*cm, 6*cm, W - 10*cm],
     ),
+    p("Any category value not present in a mapping falls back to <code>#f0f8ff</code> (<code>keep_unmapped: false</code> drops rows whose value has no explicit mapping and isn't the default)."),
     PageBreak(),
 ]
 
@@ -426,58 +466,65 @@ story += [
     h1("6. Charts"),
     hr(),
     h2("6.1  Pie charts"),
-    p("All pie charts use <b>draw_pie_chart</b> with "
-      "textinfo: \"percent+label+value\", font_size: 15, showlegend: true. "
-      "Screenshots use device_scale_factor 2.0, wait_for_timeout 50 ms."),
+    p(
+        "All five pie charts use "
+        "<code>ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart</code> "
+        "with <code>textinfo: \"percent+label+value\"</code>, <code>font_size: 12</code>, "
+        "<code>showlegend: true</code>."
+    ),
     make_table(
         [
-            ["Output file", "Value column", "Label / color column"],
-            ["livestock_killed_by_predator_pie.html/.png",
-             "Total animals killed",
-             "Animal responsible / animal_responsible_colors"],
-            ["compensation_value_by_predator_pie.html/.png",
+            ["Output file", "Value column", "Label / colour column"],
+            ["livestock_killed_by_predator_pie",
+             "total_animals_killed",
+             "Animal responsible / animal_responsible_colors_rgba"],
+            ["compensation_value_by_predator_pie",
              "Compensation value to owner",
-             "Animal responsible / animal_responsible_colors"],
-            ["compensation_value_by_ranch_pie.html/.png",
+             "Animal responsible / animal_responsible_colors_rgba"],
+            ["compensation_value_by_ranch_pie",
              "Compensation value to owner",
-             "Ranch / ranch_colors"],
-            ["livestock_attack_location_pie.html/.png",
-             "Where were the livestock when the attack happened",
-             "livestock_location_colors"],
-            ["boma_type_targeted_pie.html/.png",
-             "Total Incidents (from boma_pred_incidents table)",
-             "Boma type / boma_type_colors"],
+             "Ranch / ranch_colors_rgba"],
+            ["livestock_attack_location_pie",
+             "Where were the livestock&hellip; (categorical)",
+             "livestock_attack_colors_rgba"],
+            ["boma_type_targeted_pie",
+             "Boma type (categorical)",
+             "boma_type_colors_rgba"],
         ],
-        [6*cm, 4*cm, W - 10*cm],
+        [5*cm, 5*cm, W - 10*cm],
     ),
     sp(6),
     h2("6.2  Stacked bar charts"),
-    p("Three stacked bar charts use <b>draw_custom_stacked_bar_chart</b> and "
-      "<b>draw_custom_100_stacked_bar_chart</b>. All share plot_bgcolor: #f5f5f5, "
-      "bargap: 0.1, font_color: #222222, x-axis: Ranch."),
+    p(
+        "Three charts use <code>ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart</code> "
+        "(<code>mode: stacked</code> or <code>percent_stacked</code>), category axis "
+        "<code>Ranch</code>, <code>plot_bgcolor: #f5f5f5</code>, <code>bargap/bargroupgap: 0.05</code>."
+    ),
     make_table(
         [
             ["Output file", "Y axis / agg", "Stack column", "Stack order"],
-            ["livestock_killed_by_claim_type_bar.html/.png",
-             "Total animals killed / sum",
+            ["livestock_killed_by_claim_type_bar",
+             "total_animals_killed / sum",
              "Type of claim",
-             "Lost in the Bush → No Penalty → Bad Boma"],
-            ["claim_count_by_type_bar.html/.png",
+             "Lost in the Bush &rarr; No Penalty &rarr; Bad Boma"],
+            ["claim_count_by_type_bar",
              "id / count",
              "Type of claim",
-             "Lost in the Bush → No Penalty → Bad Boma"],
-            ["livestock_killed_by_predator_pct_bar.html/.png",
-             "Total animals killed / sum (100%)",
+             "Lost in the Bush &rarr; No Penalty &rarr; Bad Boma"],
+            ["livestock_killed_by_predator_pct_bar",
+             "total_animals_killed / sum (percent_stacked)",
              "Animal responsible",
-             "Hyena → Jackal → Lion"],
+             "Hyena &rarr; Jackal &rarr; Lion"],
         ],
         [5.5*cm, 3.5*cm, 3*cm, W - 12*cm],
     ),
     sp(6),
     h2("6.3  Time-of-day bar chart"),
-    p("Built with <b>draw_custom_bar_chart</b>. Incidents are counted per time "
-      "bin in fixed order, with agg_func: count and show_label: true. "
-      "plot_bgcolor: #f5f5f5, showlegend: false."),
+    p(
+        "Built with <code>draw_bar_chart</code> (<code>mode: grouped</code>, "
+        "<code>category: \"Time of attack\"</code>, agg_func count, "
+        "<code>showlegend: false</code>, bar colour <code>#6495ed</code>)."
+    ),
     make_table(
         [
             ["Time bin", "Hours covered"],
@@ -488,56 +535,66 @@ story += [
         ],
         [4*cm, W - 4*cm],
     ),
-    p("Output: <b>predation_incidents_by_time_of_day_bar.html/.png</b>"),
+    p("Output: <b>predation_incidents_by_time_of_day_bar</b>"),
     sp(6),
     h2("6.4  Multi-line time-series charts"),
-    p("Three charts use <b>draw_custom_multi_line_time_series</b>. All use "
-      "time_frequency from the user-selectable parameter, hovermode: "
-      "\"x unified\", tickangle: 45, plot_bgcolor: #f5f5f5."),
+    p(
+        "Three charts use <code>draw_grouped_line_time_series_chart</code>, all "
+        "driven by the user-selected <code>time_frequency</code>."
+    ),
     make_table(
         [
             ["Output file", "Group column", "Y / agg", "Fill", "Group order"],
-            ["livestock_killed_over_time_by_ranch_chart.html/.png",
-             "Ranch", "Total animals killed / sum", "No",
-             "Eselengei → Mbirikani → Kimana"],
-            ["livestock_killed_over_time_by_attack_location_chart.html/.png",
-             "Attack location", "Total animals killed / sum", "Yes",
-             "Inside Boma → Within 200m → More than 200m"],
-            ["claim_count_over_time_by_type_chart.html/.png",
+            ["livestock_killed_over_time_by_ranch_chart",
+             "Ranch", "total_animals_killed / sum", "No",
+             "Eselengei &rarr; Mbirikani &rarr; Kimana"],
+            ["livestock_killed_over_time_by_attack_location_chart",
+             "attack location", "total_animals_killed / sum", "Yes",
+             "Inside Boma &rarr; Within 200m &rarr; More than 200m"],
+            ["claim_count_over_time_by_type_chart",
              "Type of claim", "id / count", "Yes",
-             "Lost in the Bush → No Penalty → Bad Boma"],
+             "Lost in the Bush &rarr; No Penalty &rarr; Bad Boma"],
         ],
-        [5.5*cm, 3*cm, 3*cm, 1.5*cm, W - 13*cm],
+        [5.5*cm, 3*cm, 3*cm, 1.3*cm, W - 12.8*cm],
     ),
     sp(6),
-    h2("6.5  Multi-bar time-series chart"),
-    p("Built with <b>draw_custom_multi_bar_time_series</b>. Animals killed are "
-      "summed per predator species in a 2-column subplot grid "
-      "(ncols: 2, row_height: 350, shared_yaxes: false). "
-      "bar_color: <b>#6495ed</b> (cornflower blue). Screenshot dimensions: "
-      "1280 × 2000 px."),
-    p("Output: <b>livestock_killed_over_time_by_predator_mulit_bar_chart.html/.png</b>"),
+    h2("6.5  Multi-bar time-series chart (faceted per predator)"),
+    p(
+        "Built with <code>draw_faceted_bar_time_series_chart</code>: "
+        "<code>total_animals_killed</code> summed per <code>Animal responsible</code>, "
+        "in a 2-column subplot grid (<code>ncols: 2</code>, "
+        "<code>row_height: 350</code>, <code>shared_yaxes: false</code>), bar colour "
+        "<code>#6495ed</code>. Screenshot: 1280 &times; 2000 px."
+    ),
+    p("Output: <b>livestock_killed_over_time_by_predator_mulit_bar_chart</b>"),
     sp(6),
-    h2("6.6  Historic comparison charts (per ranch)"),
-    p("Built with <b>draw_historic_time_series_chart</b> via "
-      "<b>mapvalues</b> — one chart per ranch pairing current and previous "
-      "period data. Parameters:"),
+    h2("6.6  Historic comparison chart (per ranch)"),
+    p(
+        "<code>generate_grouped_historical_stats_table</code> is mapped once per "
+        "ranch over the current/previous partitions (<code>group_ranch_level_groupers</code> "
+        "zips <code>split_by_ranch</code> with <code>split_previous_by_ranch</code>), "
+        "producing a stats table per ranch with a 95% confidence interval "
+        "(<code>band_method: ci_mean</code>, <code>band_level: 0.95</code>) around "
+        "the historic mean of <code>total_animals_killed</code>, grouped by "
+        "<code>Animal responsible</code>. <code>draw_faceted_historic_timeseries</code> "
+        "then renders one faceted chart per ranch (facet = predator, "
+        "<code>ncols: 2</code>, <code>row_height: 300</code>):"
+    ),
     make_table(
         [
-            ["Parameter", "Value"],
-            ["Group column",          "Animal responsible"],
-            ["Y axis",                "Total animals killed"],
-            ["Aggregation",           "sum"],
-            ["ncols / row_height",    "2 / 350 px"],
-            ["Current line color",    "#6495ed (cornflower blue)"],
-            ["Historical line color", "#ff7f0e (orange)"],
-            ["CI method",             "seasonal (95%, multiplier 1.96)"],
-            ["Screenshot size",       "1280 × 2000 px"],
+            ["Visual element", "Column", "Colour"],
+            ["Current value line", "current_value", "rgb(0, 0, 139) — dark blue"],
+            ["Historic mean line", "historic_mean", "#ff8c00 — dark orange"],
+            ["Historic 95% CI band", "historic_min / historic_max", "rgb(143, 188, 139, 0.5) — translucent sage green"],
         ],
-        [5*cm, W - 5*cm],
+        [4.5*cm, 4.5*cm, W - 9*cm],
     ),
-    p("Outputs: <b>ranch_level_historic_time_series_chart_&lt;ranch&gt;.html/.png</b> "
-      "(one file per ranch)"),
+    p(
+        "Outputs: <b>ranch_level_historic_time_series_chart_&lt;ranch&gt;</b> — "
+        "one file per ranch, filename suffixed with the ranch name (via "
+        "<code>groupbykey</code> zipping the ranch name onto the rendered chart). "
+        "Screenshot: 1280 &times; 2000 px."
+    ),
     PageBreak(),
 ]
 
@@ -547,94 +604,110 @@ story += [
 story += [
     h1("7. Maps"),
     hr(),
-    p("All maps use the dual base-tile layer stack (Hillshade + Street Map) "
-      "and overlay the Amboseli land-use and boundary layers. Map screenshots "
-      "use device_scale_factor: 2.0 and wait_for_timeout: <b>40000 ms</b> to "
-      "allow tiles to fully render."),
-    sp(6),
-    h2("7.1  Predation incident density map"),
-    p("All valid predation events are converted to a 2000 m hexagonal density "
-      "grid. The density column is classified into 5 equal-interval bins, "
-      "which are then coloured with a yellow-to-dark-red ramp:"),
-    make_table(
-        [
-            ["Bin rank", "Hex color", "Visual meaning"],
-            ["1 (lowest)", "#FFF7BC", "Light yellow"],
-            ["2",          "#FD8D3C", "Orange"],
-            ["3",          "#F03B20", "Red-orange"],
-            ["4",          "#BD0026", "Dark red"],
-            ["5 (highest)","#99000D", "Near-black red"],
-        ],
-        [2.5*cm, 3*cm, W - 5.5*cm],
+    p(
+        "All three maps share the same base-tile stack (Hillshade + Street Map) "
+        "and the same three Amboseli overlay layers (land use, ranch boundaries, "
+        "electric fence) as static layers, framed by a shared view state "
+        "(<code>envelope_gdf</code>, expansion factor 1.05; "
+        "<code>compute_view_state_from_gdf</code>, pitch 0, bearing 0, max zoom 15). "
+        "Map screenshots use <code>device_scale_factor: 2.0</code> and "
+        "<code>wait_for_timeout: 40000</code> ms to allow the base tiles to fully render."
     ),
-    p("Grid cells are rendered as filled GeoJSON polygons (opacity 0.55, "
-      "black outline). Output: <b>predation_incident_density_map.html/.png</b>"),
     sp(6),
-    h2("7.2  Boma predation density map"),
-    p("Identical pipeline to the overall density map, but events are "
-      "pre-filtered to only those where "
-      "\"Where were the livestock when the attack happened\" == "
-      "\"Inside Boma\". Same 2000 m grid, equal-interval k=5, and "
-      "yellow-to-dark-red colormap."),
-    p("Output: <b>boma_predation_density_map.html/.png</b>"),
-    sp(6),
-    h2("7.3  Livestock species scatter map"),
-    p("Individual predation events are plotted as scatter points. Before "
-      "rendering, two cleaning steps are applied:"),
-    bullet("<b>exclude_geom_outliers</b> — removes geographic outliers "
-           "with z_threshold: 3"),
-    bullet("<b>drop_null_geometry</b> — removes rows with invalid or "
-           "missing geometry"),
-    sp(4),
-    p("Layer style: get_fill_color and get_line_color both set to "
-      "<b>livestock_species_colors</b>, get_radius: 4, opacity: 0.75. "
-      "The legend is sorted ascending by Livestock species name."),
+    h2("7.1  Livestock predation event map"),
+    p(
+        "<code>create_scatterplot_layer</code> plots every current-period event "
+        "as a point, coloured by <code>livestock_species_colors_rgba</code> "
+        "(<code>get_radius: 4</code>, opacity 0.75). Legend sorted ascending by "
+        "livestock species."
+    ),
     make_table(
         [
-            ["Livestock species", "Color"],
+            ["Livestock species", "Colour"],
             ["Shoat",   "#0000ff (blue)"],
             ["Cow",     "#8b0000 (dark red)"],
             ["Donkey",  "#ffff00 (yellow)"],
         ],
         [4*cm, W - 4*cm],
     ),
-    p("Output: <b>livestock_predation_event_map.html/.png</b>"),
+    p("Output: <b>livestock_predation_event_map</b>"),
+    sp(6),
+    h2("7.2  Predation incident density map"),
+    p(
+        "All current-period events are gridded into a 2000 m mesh "
+        "(<code>create_meshgrid</code>, EPSG:3857) and a per-cell point count "
+        "(<code>calculate_feature_density</code>). Zero-density cells are dropped, "
+        "and the remaining density values are classified into 5 equal-interval "
+        "bins (<code>apply_classification</code>) and coloured yellow-to-dark-red:"
+    ),
+    make_table(
+        [
+            ["Bin rank", "Hex colour"],
+            ["1 (lowest)", "#FFF7BC"],
+            ["2",          "#FD8D3C"],
+            ["3",          "#F03B20"],
+            ["4",          "#BD0026"],
+            ["5 (highest)","#99000D"],
+        ],
+        [4*cm, W - 4*cm],
+    ),
+    p(
+        "Grid cells are rendered as filled GeoJSON polygons (opacity 0.55, black "
+        "outline, 0.35 px line width). Output: <b>predation_incident_density_map</b>"
+    ),
+    sp(6),
+    h2("7.3  Boma predation density map"),
+    p(
+        "Identical pipeline to &sect;7.2, but events are first filtered to "
+        "<code>\"Where were the livestock when the attack happened\" == \"Inside Boma\"</code> "
+        "before gridding. Same 2000 m mesh, equal-interval k=5 classification, and "
+        "colour ramp."
+    ),
+    p("Output: <b>boma_predation_density_map</b>"),
     PageBreak(),
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 8. WORD REPORT
+# 8. WORD REPORT & DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 story += [
-    h1("8. Word Report"),
+    h1("8. Word Report &amp; Dashboard"),
     hr(),
-    p("The final report is generated by <b>generate_pcf_report</b>, which "
-      "populates the Big Life PCF Word template with all charts, maps, and "
-      "summary tables produced during the workflow run."),
-    sp(6),
     h2("8.1  Template"),
-    p("The Word template <b>pcf_report_template.docx</b> is downloaded from "
-      "Dropbox at run time (overwrite_existing: false, 3 retries) and stored "
-      "in the results directory."),
+    p(
+        "The Word template <code>pcf_report_template.docx</code> is downloaded "
+        "from Dropbox at run time (<code>overwrite_existing: false</code>, 3 "
+        "retries) via <code>fetch_and_persist_file</code>."
+    ),
     sp(6),
-    h2("8.2  Report fields"),
+    h2("8.2  Report generation"),
+    p("<code>generate_pcf_report</code> populates the template with every chart, map, and table:"),
     make_table(
         [
-            ["Field",          "Source"],
-            ["template_path",  "Path to pcf_report_template.docx"],
+            ["Field",          "Value"],
+            ["template_path",  "downloaded pcf_report_template.docx"],
             ["output_dir",     "$ECOSCOPE_WORKFLOWS_RESULTS"],
-            ["filename",       "big_life_pcf_report.docx"],
-            ["time_period",    "Workflow time range (set_time_range)"],
-            ["generated_by",   "Current EarthRanger user's full name (get_user_full_name)"],
-            ["validate_images","true — verifies all image paths before populating"],
+            ["filename",       "overall_report.docx"],
+            ["time_period",    "the workflow's current time range"],
+            ["generated_by",   "\"Ecoscope\" (fixed string — not resolved from the EarthRanger user)"],
+            ["validate_images","true — verifies every expected image exists before populating"],
         ],
-        [4*cm, W - 4*cm],
+        [3.5*cm, W - 3.5*cm],
     ),
     sp(6),
     h2("8.3  Dashboard"),
-    p("The workflow also calls <b>gather_dashboard</b> with an empty widgets "
-      "list (widgets: []), which registers the run in the workflow dashboard "
-      "without embedding any interactive widgets."),
+    p(
+        "<code>gather_dashboard</code> registers <b>24 widgets</b> — every chart, "
+        "map, and table produced by the run. Two of them are merged multi-view "
+        "widgets built with <code>merge_widget_views</code>:"
+    ),
+    bullet("<b>Historic Predation Trend by Ranch</b> — the 3 per-ranch historic comparison charts, merged into a single widget the viewer can switch between"),
+    bullet("<b>Predation Summary by Ranch</b> — the 3 per-ranch summary tables, merged the same way"),
+    p(
+        "The remaining 22 widgets are single-view plot, map, and table widgets — "
+        "one per chart/map/breakdown table described in &sect;6 and &sect;7, plus "
+        "the overall summary table and the four breakdown tables from &sect;4.3."
+    ),
     PageBreak(),
 ]
 
@@ -648,56 +721,53 @@ story += [
     make_table(
         [
             ["File", "Description"],
-            # charts
-            ["livestock_killed_by_predator_pie.html/.png",
-             "Pie — Total animals killed by Animal responsible"],
-            ["compensation_value_by_predator_pie.html/.png",
-             "Pie — Compensation value by Animal responsible"],
-            ["compensation_value_by_ranch_pie.html/.png",
-             "Pie — Compensation value by Ranch"],
-            ["livestock_attack_location_pie.html/.png",
-             "Pie — Attack location distribution"],
-            ["boma_type_targeted_pie.html/.png",
-             "Pie — Boma type (Permanent vs Temporary)"],
-            ["livestock_killed_by_claim_type_bar.html/.png",
-             "Stacked bar — Livestock killed by Type of claim × Ranch"],
-            ["claim_count_by_type_bar.html/.png",
-             "Stacked bar — Claim count by Type of claim × Ranch"],
-            ["livestock_killed_by_predator_pct_bar.html/.png",
-             "100% stacked bar — Livestock killed % by Predator × Ranch"],
-            ["predation_incidents_by_time_of_day_bar.html/.png",
-             "Bar — Incidents by 4-bin time of day"],
-            ["livestock_killed_over_time_by_ranch_chart.html/.png",
-             "Multi-line — Killed over time by Ranch"],
-            ["livestock_killed_over_time_by_attack_location_chart.html/.png",
-             "Multi-line — Killed over time by attack location (filled)"],
-            ["claim_count_over_time_by_type_chart.html/.png",
-             "Multi-line — Claim count over time by Type (filled)"],
-            ["livestock_killed_over_time_by_predator_mulit_bar_chart.html/.png",
-             "Multi-bar (2-col, 1280×2000) — Killed per predator over time"],
-            ["ranch_level_historic_time_series_chart_<ranch>.html/.png",
-             "Historic comparison per ranch (one file per ranch, 1280×2000)"],
-            # maps
-            ["predation_incident_density_map.html/.png",
-             "Density grid — all predation incidents (2000 m, equal-interval 5 bins)"],
-            ["boma_predation_density_map.html/.png",
-             "Density grid — boma attacks only (Inside Boma filter)"],
-            ["livestock_predation_event_map.html/.png",
-             "Scatter — livestock species coloured points"],
-            # word report
-            ["big_life_pcf_report.docx",
+            ["current_events.csv / previous_events.csv",
+             "Cleaned, filtered current- and previous-period event tables"],
+            ["overall_predation_summary (GeoParquet + .html)",
+             "Incidents, killed, compensation by predator, overall"],
+            ["&lt;ranch&gt; (GeoParquet + .html, one per ranch, named after the ranch)",
+             "The same summary, per ranch"],
+            ["livestock_killed_by_claim_type (GeoParquet + .html)",
+             "Animals killed by claim type × ranch"],
+            ["livestock_killed_by_predator_species (GeoParquet + .html)",
+             "Animals killed by predator × ranch"],
+            ["livestock_attacks_by_location (GeoParquet + .html)",
+             "Incident count/pct by attack location"],
+            ["predation_incidents_by_predator_and_location (GeoParquet + .html)",
+             "Incident count/pct by predator × attack location"],
+            ["predation_incidents_by_boma_type (GeoParquet + .html)",
+             "Incident count/pct by boma type"],
+            ["livestock_killed_by_predator_pie / compensation_value_by_predator_pie / "
+             "compensation_value_by_ranch_pie / livestock_attack_location_pie / "
+             "boma_type_targeted_pie (.html + .png)",
+             "5 pie charts — see &sect;6.1"],
+            ["livestock_killed_by_claim_type_bar / claim_count_by_type_bar / "
+             "livestock_killed_by_predator_pct_bar (.html + .png)",
+             "3 stacked bar charts — see &sect;6.2"],
+            ["predation_incidents_by_time_of_day_bar (.html + .png)",
+             "Time-of-day bar chart — see &sect;6.3"],
+            ["livestock_killed_over_time_by_ranch_chart / "
+             "livestock_killed_over_time_by_attack_location_chart / "
+             "claim_count_over_time_by_type_chart (.html + .png)",
+             "3 multi-line time series — see &sect;6.4"],
+            ["livestock_killed_over_time_by_predator_mulit_bar_chart (.html + .png)",
+             "Faceted multi-bar time series — see &sect;6.5"],
+            ["ranch_level_historic_time_series_chart_&lt;ranch&gt; (.html + .png, one per ranch)",
+             "Historic comparison chart — see &sect;6.6"],
+            ["livestock_predation_event_map (.html + .png)",
+             "Scatter map — see &sect;7.1"],
+            ["predation_incident_density_map (.html + .png)",
+             "Density grid — see &sect;7.2"],
+            ["boma_predation_density_map (.html + .png)",
+             "Density grid — see &sect;7.3"],
+            ["overall_report.docx",
              "Final populated Word PCF report"],
-            # static layers (cached)
-            ["amboseli_ranch_conservancies_layers.gpkg",
-             "Cached Amboseli land-use layer (from Dropbox)"],
-            ["amboseli_group_ranch_boundaries_x_electric_fence.gpkg",
-             "Cached ranch boundaries + electric fence (from Dropbox)"],
-            ["amboseli_group_ranch_boundaries.gpkg",
-             "Cached conservancy boundaries (from Dropbox)"],
-            ["pcf_report_template.docx",
-             "Cached Big Life PCF Word template (from Dropbox)"],
+            ["amboseli_ranch_conservancies_layers.gpkg / "
+             "amboseli_group_ranch_boundaries_x_electric_fence.gpkg / "
+             "amboseli_group_ranch_boundaries.gpkg / pcf_report_template.docx",
+             "Cached inputs downloaded from Dropbox"],
         ],
-        [7.5*cm, W - 7.5*cm],
+        [7*cm, W - 7*cm],
     ),
     PageBreak(),
 ]
@@ -709,57 +779,59 @@ story += [
     h1("10. Workflow Execution Logic"),
     hr(),
     h2("10.1  Skip conditions"),
-    p("Skip conditions are applied per task via individual <b>skipif</b> blocks "
-      "rather than a global default. The two conditions applied consistently "
-      "throughout the pipeline are:"),
-    bullet("<b>any_is_empty_df</b> — skips the task if any upstream DataFrame "
-           "dependency is empty"),
-    bullet("<b>any_dependency_skipped</b> — skips the task if any upstream "
-           "task was itself skipped"),
-    p("This propagates gracefully: if no valid events are found for a ranch "
-      "or time period, all downstream tasks for that branch are skipped "
-      "without raising an error."),
-    p("The previous-period event fetch uses <b>raise_on_empty: false</b>, so "
-      "if no previous-period events exist the workflow continues gracefully — "
-      "downstream tasks in that branch are skipped via the per-task skipif "
-      "conditions rather than raising an error."),
-    sp(6),
-    h2("10.2  Dual pipeline (current + previous)"),
-    p("Event fetch → normalisation → filtering → missing-value replacement → "
-      "numeric conversion → column derivation runs twice in parallel: once for "
-      "the current period and once for the previous period (shifted back by "
-      "<b>periods_back</b>, defaulting to 1). Both pipelines produce independent "
-      "GeoDataFrames that flow into the summary tables and historic comparison "
-      "charts."),
-    sp(6),
-    h2("10.3  mapvalues fan-out"),
-    p("The <b>mapvalues</b> directive is used to fan out per-ranch processing:"),
-    bullet("<b>split_by_ranch</b> and <b>split_previous_by_ranch</b> — "
-           "partition the current and previous GeoDataFrames by Ranch value"),
-    bullet("<b>zip_groupbykey</b> — zips current and previous ranch partitions "
-           "into paired tuples keyed by ranch name"),
-    bullet("<b>draw_ranch_level_historic_chart</b> and "
-           "<b>persist_ranch_historic_chart</b> — run once per ranch, producing "
-           "a separate HTML/PNG file per ranch with the ranch name as filename "
-           "suffix"),
-    sp(6),
-    h2("10.4  Screenshot timing"),
-    make_table(
-        [
-            ["wait_for_timeout", "Applied to"],
-            ["50 ms",    "All chart screenshots (fast static Plotly HTML)"],
-            ["40000 ms", "All map screenshots (density and scatter maps "
-                         "require full tile layer rendering)"],
-        ],
-        [3*cm, W - 3*cm],
+    p(
+        "Every task carries the two default skip conditions from "
+        "<code>task-instance-defaults</code>: <b>any_is_empty_df</b> (skip if any "
+        "input DataFrame is empty) and <b>any_dependency_skipped</b> (skip if an "
+        "upstream task was skipped). This propagates gracefully through the "
+        "pipeline — if no valid events exist for a ranch or for the previous "
+        "period, all downstream tasks in that branch are skipped rather than "
+        "raising an error."
+    ),
+    p(
+        "The current-period event fetch sets <code>raise_on_empty: true</code> "
+        "(a zero-event current period is treated as a configuration/data problem "
+        "worth surfacing), while the previous-period fetch sets "
+        "<code>raise_on_empty: false</code> (a missing comparison period is "
+        "expected and handled gracefully)."
     ),
     sp(6),
-    h2("10.5  Geographic outlier removal"),
-    p("Before the livestock species scatter map is rendered, "
-      "<b>exclude_geom_outliers</b> removes points with a geometry z-score "
-      "above 3 (i.e. more than 3 standard deviations from the centroid). "
-      "A second pass via <b>drop_null_geometry</b> removes any remaining "
-      "rows with null geometry to prevent rendering errors."),
+    h2("10.2  mapvalues / map fan-out"),
+    p("<code>mapvalues</code> and <code>map</code> directives fan several steps out per ranch:"),
+    bullet("<b>split_by_ranch</b> / <b>split_previous_by_ranch</b> — partition the current/previous events by <code>Ranch</code>"),
+    bullet("<b>predation_ranch_incidents / _killed / _compensation</b> — the three crosstabs, computed once per ranch partition"),
+    bullet("<b>get_ranch_name</b> — extracts the ranch name string from each partition, later zipped onto that ranch's table/chart output to control its filename suffix"),
+    bullet("<b>hist_curr_prev_table</b> / <b>draw_ranch_level_historic_chart</b> — the historic stats table and chart, computed once per ranch from the zipped current+previous partitions"),
+    bullet("<b>widget_ranch_historic_chart</b> / <b>widget_ranch_summary_table</b> — per-ranch dashboard widgets, later merged into 2 switchable widgets via <code>merge_widget_views</code>"),
+    sp(6),
+    h2("10.3  Screenshot timing"),
+    make_table(
+        [
+            ["Task(s)", "wait_for_timeout", "Notes"],
+            ["convert_chart_html_png (12 charts, batched)",
+             "1 ms", "1280&times;720; static Plotly HTML renders essentially instantly"],
+            ["convert_pred_killed_multibar_png",
+             "10 ms", "1280&times;2000"],
+            ["convert_ranch_historic_chart_png (×3, one per ranch)",
+             "10 ms", "1280&times;2000"],
+            ["convert_livestock_map_png / convert_density_map_png / convert_density_boma_map_png",
+             "40 000 ms", "Maps require full basemap tile rendering before capture"],
+        ],
+        [5.5*cm, 3.5*cm, W - 9*cm],
+    ),
+    note(
+        "The batched <code>convert_chart_html_png</code> task's "
+        "<code>html_path</code> list contains "
+        "<code>persist_killed_pred_stacked_bar</code> twice in <code>spec.yaml</code> "
+        "— a harmless duplicate entry, not a second distinct chart."
+    ),
+    sp(6),
+    h2("10.4  Geometry cleaning"),
+    p(
+        "No outlier or null-geometry filtering is applied before the livestock "
+        "scatter map in the current pipeline — every valid-claim event with a "
+        "point geometry is plotted directly via <code>create_scatterplot_layer</code>."
+    ),
     PageBreak(),
 ]
 
@@ -771,21 +843,27 @@ story += [
     hr(),
     make_table(
         [
-            ["Package", "Version pinned"],
-            ["ecoscope-workflows-core",        "0.22.17.*"],
-            ["ecoscope-workflows-ext-ecoscope","0.22.17.*"],
-            ["ecoscope-workflows-ext-custom",  "0.0.39.*"],
-            ["ecoscope-workflows-ext-ste",     "0.0.17.*"],
-            ["ecoscope-workflows-ext-mnc",     "0.0.7.*"],
-            ["ecoscope-workflows-ext-mep",     "0.12.0.*"],
-            ["ecoscope-workflows-ext-big-life","0.0.11.*"],
+            ["Package", "Version pinned", "Channel"],
+            ["ecoscope-platform",                 "2.18.0",              "ecoscope-workflows"],
+            ["ecoscope-workflows-ext-custom",     "0.1.0rc14.*",         "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-ste",        "0.0.0rc1.*",          "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-mnc",        "1.0.0.*",             "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-wwf-virunga","0.0.0rc9.*",          "ecoscope-workflows-custom"],
+            ["ecoscope-workflows-ext-big-life",   "1.0.0.*",             "ecoscope-workflows-custom"],
+            ["pydeck",                             "0.9.2",              "conda-forge"],
+            ["opentelemetry-sdk",                  "&gt;=1.20.0,&lt;2.0.0", "conda-forge"],
         ],
-        [8*cm, W - 8*cm],
+        [7*cm, 4*cm, W - 11*cm],
     ),
     sp(6),
-    note("All packages are resolved from the prefix.dev Ecoscope conda channels. "
-         "The wildcard patch-version pin (.*) allows bug-fix releases to be "
-         "picked up automatically while keeping minor and major versions locked."),
+    note(
+        "All Ecoscope packages are resolved from the prefix.dev "
+        "<code>ecoscope-workflows</code> / <code>ecoscope-workflows-custom</code> "
+        "channels. Wildcard patch/prerelease pins (<code>.*</code>) allow "
+        "bug-fix releases to be picked up automatically while keeping the "
+        "major/minor version — and, for the <code>rc</code>-pinned packages, the "
+        "prerelease line — locked. The runtime environment is managed by <b>pixi</b>."
+    ),
 ]
 
 # ══════════════════════════════════════════════════════════════════════════════
