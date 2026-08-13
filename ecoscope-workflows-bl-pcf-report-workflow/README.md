@@ -5,32 +5,35 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 9616578bd14adf780f8e9f5bea5c2de31a257d6c66fe4dc4583f8ca6b7fdb3fc
-artifacts_sha256_strict: 0a991b1b63ae0a74b7bc0acf7f6b06bdf6f317fa3783d583e0fc9e1920ace9c7
+artifacts_sha256_basic: 297acfb371be002f1622b5588001c7dc80add8f8eb93c68c49dde602b2100f13
+artifacts_sha256_strict: 96e3df1b345c99f145a568186fcce343c7e0b3de859485a6371f5e84dc107aa5
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-core
-  version: {version: ==0.22.17}
-- channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-ext-ecoscope
-  version: {version: ==0.22.17}
+  name: ecoscope-platform
+  version: {version: ==2.18.0}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-custom
-  version: {version: ==0.0.39}
+  version: {version: ==0.1.0rc14}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-ste
-  version: {version: ==0.0.17}
+  version: {version: ==0.0.0rc1}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-mnc
-  version: {version: ==0.0.7}
+  version: {version: ==1.0.0}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-mep
-  version: {version: ==0.12.0}
+  name: ecoscope-workflows-ext-wwf-virunga
+  version: {version: ==0.0.0rc9}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-big-life
-  version: {version: ==0.0.11}
-params_sha256: f65a2a2c8c161e438106cb00c4b13387bebe35af022bf23f0181f0ce6d33249b
-spec_sha256: c1d8d4cc60a8e69874a0e292387d375d1ee524c4a7f7de551a4d505fe2081a5d
+  version: {version: ==1.0.0}
+- channel: conda-forge
+  name: pydeck
+  version: {version: ==0.9.2}
+- channel: conda-forge
+  name: opentelemetry-sdk
+  version: {version: ==1.44.0}
+params_sha256: cb957e752f3558cefb396be7461c2bafd7f6392567aafb0a243a92812d7325aa
+spec_sha256: 87a554f807e029b7e161f6ef9ed30825c65f4b1fe39d536203527897636ca74a
 
 ```
 

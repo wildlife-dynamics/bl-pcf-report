@@ -1,41 +1,47 @@
 id: bl_pcf_report
 requirements:
-  - name: ecoscope-workflows-core
-    version: "0.22.17.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows/
-
-  - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.17.*"
+  - name: ecoscope-platform
+    version: "2.18.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.39.*"
+    version: "0.1.0rc14.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.17.*"
+    version: "0.0.0rc1.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
-    version: "0.0.7.*"
+    version: "1.0.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
-  - name: ecoscope-workflows-ext-mep
-    version: "0.12.0.*"
+  - name: ecoscope-workflows-ext-wwf-virunga
+    version: "0.0.0rc9.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-big-life
-    version: "0.0.11.*"
+    version: "1.0.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+
+  - name: opentelemetry-sdk
+    version: ">=1.20.0,<2.0.0"
+    channel: conda-forge
+
+task-instance-defaults:
+  skipif:
+    conditions: 
+      - any_is_empty_df 
+      - any_dependency_skipped 
 
 rjsf-overrides:
   properties:
-    Previous period time range.title: "Previous Period Range"
-    Previous period time range.properties.previous_period_range.properties.periods_back.title: "Periods Back"
-    Previous period time range.properties.previous_period_range.properties.periods_back.description: >-
-      How many periods back to shift (default: 1 = the immediately preceding
-      period). Increase to compare against a more distant reference window.
-    Previous period time range.properties.previous_period_range.properties.periods_back.default: 1
+    # Previous Period — clarify that the comparison period ends where the current time range begins
+    Previous Period.properties.set_previous_period.properties.offset.description: "Choose how to calculate the comparison period's Start Date. In every mode, the comparison period ends on your selected time range's Start Date (so it never overlaps with the current period) — only the Start Date changes."
 
 workflow:
   # Set workflow details 
@@ -44,20 +50,25 @@ workflow:
     task: set_workflow_details
   
   # Define time range 
-  - name: Set Report Time Range
+  - name: Time Range
     id: time_range
     task: set_time_range
 
   # Define groupers 
-  - name: Set Data Grouping
+  - name: Set Groupers
     id: groupers
     task: set_groupers
     partial:
-      groupers:
+      groupers: 
         - index_name: "Ranch"
 
+  # Define GEE connnection 
+  - name: Set GEE connection 
+    id: gee_client 
+    task: set_gee_connection
+
   #  Connect to ER 
-  - name: Connect to EarthRanger
+  - name: Connect to ER 
     id: er_client_name 
     task: set_er_connection
 
@@ -78,7 +89,7 @@ workflow:
 
   - name: Download amboseli conservancy layers
     id: ambo_ranch_layers
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial:
       url: https://www.dropbox.com/scl/fi/wrcp3pnnxqyrclzmbtt1r/amboseli_ranch_conservancies_layers.gpkg?rlkey=jfbqj1b1nwhijxbsy7b2v1d29&st=d7rbqdfe&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -88,7 +99,7 @@ workflow:
   
   - name: Download amboseli ranch boundaries and electric fence
     id: ambo_bound_fence 
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial: 
       url: https://www.dropbox.com/scl/fi/k6dgrmxmxeb3fe6glihwa/amboseli_group_ranch_boundaries_x_electric_fence.gpkg?rlkey=limtzffe88lr0iof5kf3b6uoy&st=rreho3tq&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -96,19 +107,15 @@ workflow:
       retries: 3
       unzip: false
   
-  - name: Download Amboseli Conservancies
+  - name: Download ambo conservancies 
     id: ambo_conservancies 
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial: 
       url: https://www.dropbox.com/scl/fi/blo1smf49buhwx24y4z60/amboseli_group_ranch_boundaries.gpkg?rlkey=w86emavj8ug7zab73ifbzg6jv&st=v8uptlb0&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       overwrite_existing: false
       retries: 3
       unzip: false
-
-  - name: Select time frequency for temporal charts 
-    id: time_frequency
-    task: select_time_frequency
 
   - name: Load amboseli conservancy layers 
     id: load_ambo_layers 
@@ -134,175 +141,141 @@ workflow:
       layer: null 
       deserialize_json: false 
 
-  - name: Reproject Amboseli Conservancy Layers to WGS84
+  - name: Reproject gdf to 4326 for ambo layers 
     id: reproject_ambo_layers 
     task: reproject_gdf
     partial: 
       gdf: ${{ workflow.load_ambo_layers.return }}
       target_crs: "EPSG:4326"
 
-  - name: Reproject Amboseli Ranch Boundaries and Electric Fence to WGS84
+  - name: Reproject gdf to 4326 for ambo boundaries and electric fence 
     id: reproject_ambo_boundaries 
     task: reproject_gdf
     partial: 
       gdf: ${{ workflow.load_ambo_boundaries_fence.return }}
       target_crs: "EPSG:4326"
 
-  - name: Reproject Amboseli Conservancies to WGS84
+  - name: Reproject gdf to 4326 for ambo conservancies
     id: reproject_ambo_conservancies
     task: reproject_gdf
     partial: 
       gdf: ${{ workflow.load_ambo_conservancies.return }}
       target_crs: "EPSG:4326"
 
-  - name: Split Amboseli Layers by Land Use
-    id: split_ambo_layers_use 
-    task: split_gdf_by_column
-    partial: 
-      gdf: ${{ workflow.reproject_ambo_layers.return }}
-      column: land_use
+  - name: Apply colormap to amboseli land_use column
+    id: apply_ambo_color
+    task: apply_color_map
+    partial:
+      df: ${{ workflow.reproject_ambo_layers.return }}
+      input_column_name: land_use
+      output_column_name: land_use_color
+      colormap:
+        Rangeland: "#a39c91"
+        Rangeland and settlement: "#ffa07a"
+        Settlement and agriculture: "#2f4f4f"
+        Conservancies: "#8fbc8b"
+        National parks and reserves: "#4d6600"
 
-  - name: Annotate Amboseli Layers with Geometry Type
-    id: annotate_ambo_layers_gdf_dict 
-    task: annotate_gdf_dict_with_geom_type
-    partial:  
-      gdf_dict: ${{ workflow.split_ambo_layers_use.return }}
-
-  - name: Create styled layers from split amboseli layers 
-    id: create_ambo_layers_styled 
-    task: create_deckgl_layers_from_gdf_dict
-    partial: 
-      gdf_dict: ${{ workflow.annotate_ambo_layers_gdf_dict.return }}
-      styles: 
-        Rangeland:
-          extruded: false
-          get_fill_color: [163, 156, 145]
-          get_line_color: [163, 156, 145]
-          get_line_width: 0.85
-          stroked: true 
-          filled: true 
-          opacity: 0.75
-
-        Rangeland and settlement:
-          extruded: false
-          get_fill_color: [255, 160, 122]
-          get_line_color: [255, 160, 122]
-          get_line_width: 0.85
-          stroked: true 
-          filled: true 
-          opacity: 0.75
-
-        Settlement and agriculture:
-          extruded: false
-          get_fill_color: [47, 79, 79]
-          get_line_color: [47, 79, 79]
-          get_line_width: 0.85
-          stroked: true 
-          filled: true 
-          opacity: 0.75
-
-        Conservancies:
-          extruded: false
-          get_fill_color: [143, 188, 139]
-          get_line_color: [143, 188, 139]
-          get_line_width: 0.85
-          stroked: true 
-          filled: true 
-          opacity: 0.75
-
-        National parks and reserves:
-          extruded: false
-          get_fill_color: [77, 102, 0]
-          get_line_color: [77, 102, 0]
-          get_line_width: 0.85
-          stroked: true 
-          filled: true 
-          opacity: 0.75
-
-      legends: 
-        title: Map Layers 
-        values: 
-          - label: Conservancies 
+  - name: Create amboseli land_use layer
+    id: create_land_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial:
+      geodataframe: ${{ workflow.apply_ambo_color.return }}
+      data_url: null
+      layer_style:
+        filled: true
+        stroked: true
+        get_fill_color: land_use_color
+        get_line_color: land_use_color
+        get_line_width: 0.85
+        opacity: 0.75
+      legend:
+        title: Map Layers
+        values:
+          - label: Conservancies
             color: "#8fbc8b"
 
           - label: National park and reserves
             color: "#4d6600"
 
-          - label: Settlement and agriculture 
+          - label: Settlement and agriculture
             color: "#2f4f4f"
 
-          - label: Rangeland 
+          - label: Rangeland
             color: "#a39c91"
 
-          - label: Rangeland and settlement 
+          - label: Rangeland and settlement
             color: "#ffa07a"
 
-  - name: Split Amboseli Electric Fence and Boundaries by Land Use
-    id: split_ambo_boundaries
-    task: split_gdf_by_column
-    partial:  
-      gdf: ${{ workflow.reproject_ambo_boundaries.return }}
-      column: land_use 
-
-  - name: Annotate Amboseli Boundaries and Electric Fence with Geometry Type
-    id: annotate_ambo_boundaries 
-    task: annotate_gdf_dict_with_geom_type
-    partial: 
-      gdf_dict: ${{ workflow.split_ambo_boundaries.return }}
-
-  - name: Create styled layers from split amboseli boundaries and electric fence 
-    id: create_ambo_boundaries_styled 
-    task: create_deckgl_layers_from_gdf_dict
+  - name: Filter to ambo ranch boundaries only
+    id: filter_ambo_boundaries
+    task: filter_df
     partial:
-      gdf_dict: ${{ workflow.annotate_ambo_boundaries.return }}
-      styles: 
-        Ranch boundaries: 
-          extruded: false 
-          get_color: [0, 0, 0]
-          get_line_width: 0.95
-          get_width: 0.95
-          stroked: true 
-          filled: false
-          opacity: 0.55
+      df: ${{ workflow.reproject_ambo_boundaries.return }}
+      column_name: land_use
+      op: equal
+      value: Ranch boundaries
+      reset_index: true
 
-        Electric Fence:
-          extruded: false 
-          get_color: [45, 98, 177]
-          get_width: 5.5 
-          stroked: true 
-          filled: false 
-          opacity: 1.0
+  - name: Filter to ambo electric fence only
+    id: filter_ambo_fence
+    task: filter_df
+    partial:
+      df: ${{ workflow.reproject_ambo_boundaries.return }}
+      column_name: land_use
+      op: equal
+      value: Electric Fence
+      reset_index: true
 
-      legends: 
+  - name: Create ambo ranch boundaries layer
+    id: create_bound_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial:
+      geodataframe: ${{ workflow.filter_ambo_boundaries.return }}
+      data_url: null
+      layer_style:
+        filled: false
+        stroked: true
+        get_line_color: [0, 0, 0]
+        get_line_width: 0.95
+        opacity: 0.55
+      legend:
         title: ""
-        values: 
-          - label: Electric fence
-            color: "#2d62b1"
-
+        values:
           - label: Ranch boundaries
             color: "#000000"
 
-  - name: Retrieve current events 
+  - name: Create ambo electric fence layer
+    id: create_fence_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial:
+      geodataframe: ${{ workflow.filter_ambo_fence.return }}
+      data_url: null
+      layer_style:
+        filled: false
+        stroked: true
+        get_line_color: [45, 98, 177]
+        get_line_width: 5.5
+        opacity: 1.0
+      legend:
+        title: ""
+        values:
+          - label: Electric fence
+            color: "#2d62b1"
+ 
+  - name: Retrieve Livestock Predation Events
     id: get_current_events
     task: get_events
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+
     partial:
       client: ${{ workflow.er_client_name.return }}
       time_range: ${{ workflow.time_range.return }}
-      event_columns:
-        - id
-        - time
-        - event_type
-        - event_category
-        - reported_by
-        - serial_number
-        - geometry
-        - created_at
-        - event_details
-
+      event_columns: [
+        "id", "time", "event_type", 
+        "event_category", "reported_by", 
+        "serial_number", "geometry", 
+        "event_details","patrols"
+        ]
       event_types:
         - hwc_lvstprd
       raise_on_empty: true
@@ -311,28 +284,29 @@ workflow:
       include_related_events: false
       include_null_geometry: false
       include_display_values: true
+      force_point_geometry: true 
   
-  - title: Previous period time range
+  - title: Previous Period
     type: task-group
     description: >-
-      Automatically calculated from the report time range above — shifted back
-      by one equivalent period. For example, if the report covers Jan 1–Feb 1,
-      the previous period will be Dec 1–Jan 1. This is used to compare current
-      events against the same duration in the prior period.
-    tasks:
+      Define the comparison ("previous") period to contrast against your selected time range.
+      Every option below computes a period that ends on the same End Date as your time range, then
+      works backward to determine its Start Date. Choose Custom to enter your own Years / Months /
+      Weeks / Days offset (defaults to 1 month back), Preset for a common lookback (e.g. 1, 3 or 6
+      months, or 1 year back), or Calendar to pick an exact Start Date.
+    tasks: 
       - name: null
-        id: previous_period_range
-        task: shift_previous_period
+        id: set_previous_period
+        task: ecoscope_workflows_ext_ste.tasks.filter.flexible_previous_period
         partial: 
-          time_range: ${{ workflow.time_range.return }}
-
+          timerange: ${{ workflow.time_range.return }}
 
   - name: Retrieve previous period events
-    id: get_previous_data
+    id: get_previous_events
     task: get_events
     partial:
       client: ${{ workflow.er_client_name.return }}
-      time_range: ${{ workflow.previous_period_range.return }}
+      time_range: ${{ workflow.set_previous_period.return }}
       event_columns:
         - id
         - time
@@ -352,16 +326,40 @@ workflow:
       include_related_events: false
       include_null_geometry: false
       include_display_values: true
+      force_point_geometry: true 
+
+  - name: Extract current date from events data
+    id: extract_cevent_date
+    task: extract_column_as_type
+    partial:
+      df: ${{ workflow.get_current_events.return }}
+      column_name: time
+      output_type: date
+      output_column_name: date
+
+  - name: Extract previous date from events data
+    id: extract_pevent_date
+    task: extract_column_as_type
+    partial:
+      df: ${{ workflow.get_previous_events.return }}
+      column_name: time
+      output_type: date
+      output_column_name: date
 
   - name: Process current events details
     id: process_current_details
-    task: process_events_details 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.get_current_events.return }}
+    task: ecoscope_workflows_ext_custom.tasks.io.process_events_details
+    partial:
+      df: ${{ workflow.extract_cevent_date.return }}
+      client: ${{ workflow.er_client_name.return }}
+      map_to_titles: true
+      ordered: true
+
+  - name: Process previous events details
+    id: process_previous_details
+    task: ecoscope_workflows_ext_custom.tasks.io.process_events_details
+    partial:
+      df: ${{ workflow.extract_pevent_date.return }}
       client: ${{ workflow.er_client_name.return }}
       map_to_titles: true 
       ordered: true
@@ -369,329 +367,342 @@ workflow:
   - name: Normalize Current Events Column Names
     id: normalize_current_events 
     task: normalize_json_column
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       column: event_details
       df: ${{ workflow.process_current_details.return }}
       skip_if_not_exists: true 
       sort_columns: true 
 
+  - name: Normalize Previous Events Column Names
+    id: normalize_previous_events 
+    task: normalize_json_column
+    partial:
+      column: event_details
+      df: ${{ workflow.process_previous_details.return }}
+      skip_if_not_exists: true 
+      sort_columns: true 
+
   - name: Drop column prefix from current events 
-    id: drop_current_prefix 
-    task: drop_column_prefix
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    id: drop_currente_prefix 
+    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_column_prefix
     partial: 
       df: ${{ workflow.normalize_current_events.return }}
       prefix: event_details__
       duplicate_strategy: keep_original 
 
+  - name: Drop column prefix from previous events 
+    id: drop_previouse_prefix 
+    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_column_prefix
+    partial: 
+      df: ${{ workflow.normalize_previous_events.return }}
+      prefix: event_details__
+      duplicate_strategy: keep_original 
+
+  - name: Drop hwc from current events 
+    id: drop_current_hwc 
+    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_column_prefix
+    partial: 
+      df: ${{ workflow.drop_currente_prefix.return }}
+      prefix: hwc_lvstprd__
+      duplicate_strategy: keep_original 
+
+  - name: Drop hwc from previous events 
+    id: drop_previous_hwc 
+    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_column_prefix
+    partial: 
+      df: ${{ workflow.drop_previouse_prefix.return }}
+      prefix: hwc_lvstprd__
+      duplicate_strategy: keep_original 
+
   - name: Rename and Filter Current Event Columns
     id: map_current_columns 
     task: map_columns
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      df: ${{ workflow.drop_current_prefix.return }}
+      df: ${{ workflow.drop_current_hwc.return }}
       drop_columns: [
-            "event_category",
-            "event_type",
-            "reported_by",
-            "event_type_display",
-            "Boma coordinate X",
-            "Boma coordinate Y",
-            "GPS Accuracy",
-            "Owner ID number",
-            "Owner name",
+        "event_category",
+        "event_type",
+        "reported_by",
+        "event_type_display",
+        "Boma coordinate X",
+        "Boma coordinate Y",
+        "GPS Accuracy",
+        "Owner ID number",
+        "Owner name",
+        "patrols",
+        "Additional information",
+        # "Adults injured",
+        # "Adults killed",
+        "Age of herders",
+        "Area",
+        "Community reaction",
+        "Did anyone see the predator",
+        "Did the predator enter boma",
+        "Did the predator scare livestock from inside boma",
+        "Does boma have LED simba lights",
+        "Does boma have predator proof fencing",
+        "GPS Accuracy",
+        "Name of verification officer",
+        "Number of herders",
+        "Owner ID number",
+        "Owner name",
+        "Partners present",
+        "Predator Scout present",
+        "Sex of herders",
+        "Teams involved",
+        "Time of verification",
+        "Tracks present",
+        "Zone",
+        "verification officer",
+        "verification time",
         ]
       retain_columns: []
       rename_columns: {}
-      raise_if_not_found: true
+      raise_if_not_found: false
 
-  - name: Filter Events to Target Ranches
+  - name: Rename and Filter Previous Event Columns
+    id: map_previous_columns 
+    task: map_columns
+    partial: 
+      df: ${{ workflow.drop_previous_hwc.return }}
+      drop_columns: [
+        "event_category",
+        "event_type",
+        "reported_by",
+        "event_type_display",
+        "Boma coordinate X",
+        "Boma coordinate Y",
+        "GPS Accuracy",
+        "Owner ID number",
+        "Owner name",
+        "patrols",
+        "Additional information",
+        # "Adults injured",
+        # "Adults killed",
+        "Age of herders",
+        "Area",
+        "Community reaction",
+        "Did anyone see the predator",
+        "Did the predator enter boma",
+        "Did the predator scare livestock from inside boma",
+        "Does boma have LED simba lights",
+        "Does boma have predator proof fencing",
+        "GPS Accuracy",
+        "Name of verification officer",
+        "Number of herders",
+        "Owner ID number",
+        "Owner name",
+        "Partners present",
+        "Predator Scout present",
+        "Sex of herders",
+        "Teams involved",
+        "Time of verification",
+        "Tracks present",
+        "Zone",
+        "verification officer",
+        "verification time",
+        ]
+      retain_columns: []
+      rename_columns: {}
+      raise_if_not_found: false
+
+  - name: Filter Current Events to Target Ranches
     id: retain_current_ranches
     task: filter_row_values 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
       df: ${{ workflow.map_current_columns.return }}
       column: Ranch 
-      values: 
-        - Eselengei 
-        - Mbirikani 
-        - Kimana 
+      values: [
+        "Eselengei",
+        "Mbirikani", 
+        "Kimana"
+        ]
   
+  - name: Filter Previous Events to Target Ranches
+    id: retain_previous_ranches
+    task: filter_row_values 
+    partial: 
+      df: ${{ workflow.map_previous_columns.return }}
+      column: Ranch 
+      values: [
+        "Eselengei",
+        "Mbirikani", 
+        "Kimana"
+        ]
+
   - name: Filter Current Events to Valid Claims Only
     id: filter_current_valid_claims
     task: filter_row_values
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
       df: ${{ workflow.retain_current_ranches.return }}
       column: "Validity of claim"
-      values: 
-        - Valid
-
-  - name: Replace Missing Values in Current Events with N/A
-    id: replace_current_missing_na
-    task: replace_missing_with_label 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.filter_current_valid_claims.return }}
-      columns: [
-            "Did anyone see the predator",
-            "Did the predator enter boma",
-            "Did the predator scare livestock from inside boma",
-            "Does boma have LED simba lights",
-            "Does boma have predator proof fencing",
-            "Predator Scout present",
-            "Tracks present",
-        ]
-      label: "N/A"
-      
-  - name: Replace Unknown Values in Current Events
-    id: replace_current_missing_unknown
-    task: replace_missing_with_label 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.replace_current_missing_na.return }}
-      columns: [
-            "Boma type",
-            "Livestock species",
-            "Predator Scout present",
-            "Ranch",
-            "Time of attack",
-            "Type of claim",
-            "Validity of claim",
-            "Where were the livestock when the attack happened",
-            "Animal responsible",
-        ]
-      label: "Unknown"
-
-  - name: Convert Current Event Numeric Columns to Integer
-    id: convert_current_to_int 
-    task: convert_column_values_to_numeric #convert_to_int 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.replace_current_missing_unknown.return }}
-      columns: [
-            "Adults injured",
-            "Adults killed",
-            "Compensation value to owner",
-            "Young (<1yr) injured",
-            "Young (<1yr) killed",
-        ]
-
-  - name: Process previous events details
-    id: process_previous_details
-    task: process_events_details
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.get_previous_data.return }}
-      client: ${{ workflow.er_client_name.return }}
-      map_to_titles: true
-      ordered: true
-
-  - name: Normalize previous events column
-    id: normalize_previous_events
-    task: normalize_json_column
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      column: event_details
-      df: ${{ workflow.process_previous_details.return }}
-      skip_if_not_exists: true
-      sort_columns: true
-  
-  - name: Drop column prefix from previous events
-    id: drop_previous_prefix
-    task: drop_column_prefix
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.normalize_previous_events.return }}
-      prefix: event_details__
-      duplicate_strategy: keep_original
-
-  - name: Rename and Filter Previous Event Columns
-    id: map_previous_columns
-    task: map_columns
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.drop_previous_prefix.return }}
-      drop_columns: [
-            "event_category",
-            "event_type",
-            "reported_by",
-            "event_type_display",
-            "Boma coordinate X",
-            "Boma coordinate Y",
-            "GPS Accuracy",
-            "Owner ID number",
-            "Owner name",
-        ]
-      retain_columns: []
-      rename_columns: {}
-      raise_if_not_found: true
-
-  - name: Filter Previous Events to Target Ranches
-    id: retain_previous_ranches
-    task: filter_row_values
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_previous_columns.return }}
-      column: Ranch
-      values:
-        - Eselengei
-        - Mbirikani
-        - Kimana    
+      values: ["Valid"]
 
   - name: Filter Previous Events to Valid Claims Only
     id: filter_previous_valid_claims
     task: filter_row_values
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
+    partial: 
       df: ${{ workflow.retain_previous_ranches.return }}
       column: "Validity of claim"
-      values:
-        - Valid
+      values: ["Valid"]
 
-  - name: Replace Missing Values in Previous Events with N/A
-    id: replace_previous_missing_na
-    task: replace_missing_with_label
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.filter_previous_valid_claims.return }}
-      columns: [
-            "Did anyone see the predator",
-            "Did the predator enter boma",
-            "Did the predator scare livestock from inside boma",
-            "Does boma have LED simba lights",
-            "Does boma have predator proof fencing",
-            "Predator Scout present",
-            "Tracks present",
-        ]
-      label: "N/A"
-
-  - name: Replace Unknown Values in Previous Events
-    id: replace_previous_missing_unknown
-    task: replace_missing_with_label
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.replace_previous_missing_na.return }}
-      columns: [
-            "Boma type",
-            "Livestock species",
-            "Predator Scout present",
-            "Ranch",
-            "Time of attack",
-            "Type of claim",
-            "Validity of claim",
-            "Where were the livestock when the attack happened",
-            "Animal responsible",
-        ]
-      label: "Unknown"  
-  
-  - name: Convert Previous Event Numeric Columns to Integer
-    id: convert_previous_to_int
-    task: convert_column_values_to_numeric #convert_to_int
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.replace_previous_missing_unknown.return }}
-      columns: [
-            "Adults injured",
-            "Adults killed",
-            "Compensation value to owner",
-            "Young (<1yr) injured",
-            "Young (<1yr) killed",
-        ]
-
-  - name: Combine current columns to create total livestock killed 
-    id: current_total_killed
-    task: combine_columns
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+  - name: Combine columns to bypass errors 
+    id: current_adult_kills
+    task: create_combined_column 
     partial: 
-      df: ${{ workflow.convert_current_to_int.return }}
-      output_column: "Total animals killed"
-      input_columns: [
-            "Adults killed",
-            "Young (<1yr) killed",
-        ]
-      agg_func: "sum"
+      df: ${{ workflow.filter_current_valid_claims.return }}
+      primary_column: "Adults killed"
+      fallback_column: "hwc_lvstpd_number_adults killed"
+      output_column: "total_adult_livestock_killed"
+      fill_remaining: 0 
+   
+  - name: Combine columns to bypass errors 
+    id: previous_adult_kills
+    task: create_combined_column 
+    partial: 
+      df: ${{ workflow.filter_previous_valid_claims.return }}
+      primary_column: "Adults killed"
+      fallback_column: "hwc_lvstpd_number_adults killed"
+      output_column: "total_adult_livestock_killed"
+      fill_remaining: 0 
+
+  - name: Combine columns to bypass errors 
+    id: current_young_kills
+    task: create_combined_column 
+    partial: 
+      df: ${{ workflow.current_adult_kills.return }}
+      primary_column: "Young (<1yr) killed"
+      fallback_column: "hwc_lvstprd_<1yr"
+      output_column: "total_young_livestock_killed"
+      fill_remaining: 0 
+   
+  - name: Combine columns to bypass errors 
+    id: previous_young_kills
+    task: create_combined_column 
+    partial: 
+      df: ${{ workflow.previous_adult_kills.return }}
+      primary_column: "Young (<1yr) killed"
+      fallback_column: "hwc_lvstprd_<1yr"
+      output_column: "total_young_livestock_killed"
+      fill_remaining: 0 
+
+  - name: Convert current event columns to numeric 
+    id: current_events_numeric 
+    task: convert_column_values_to_numeric 
+    partial: 
+      df: ${{ workflow.current_young_kills.return }}
+      columns: [
+        "Compensation value to owner",
+        "total_adult_livestock_killed",
+        "total_young_livestock_killed"
+      ]
+
+  - name: Convert previous event columns to numeric 
+    id: previous_events_numeric 
+    task: convert_column_values_to_numeric 
+    partial: 
+      df: ${{ workflow.previous_young_kills.return }}
+      columns: [
+        "Compensation value to owner",
+        "total_adult_livestock_killed",
+        "total_young_livestock_killed"
+      ]   
   
-  - name: Combine previous columns to create total livestock killed
-    id: previous_total_killed
-    task: combine_columns
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.convert_previous_to_int.return }}
-      output_column: "Total animals killed"
-      input_columns: [
-            "Adults killed",
-            "Young (<1yr) killed",
+  - name: Replace Missing Values in Current Events with N/A
+    id: replace_current_missing
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.fill_missing_values
+    partial: 
+      df: ${{ workflow.current_events_numeric.return }}
+      subset: [
+        "Compensation value to owner",
+        "total_adult_livestock_killed",
+        "total_young_livestock_killed"
         ]
-      agg_func: "sum"
+      value: 0
+      
+  - name: Replace Missing Values in Previous Events with N/A
+    id: replace_previous_missing
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.fill_missing_values
+    partial: 
+      df: ${{ workflow.previous_events_numeric.return }}
+      subset: [
+        "Compensation value to owner",
+        "total_adult_livestock_killed",
+        "total_young_livestock_killed"
+        ]
+      value: 0
+
+  - name: Replace Missing Values in Previous Events with Unknown 
+    id: replace_current_unknown
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.fill_missing_values
+    partial: 
+      df: ${{ workflow.replace_current_missing.return }}
+      subset: [
+        "Animal responsible",
+        "Boma type",
+        "Livestock species",
+        "Type of claim",
+        "Where were the livestock when the attack happened"
+        ]
+      value: "Unknown"
+
+  - name: Replace Missing Values in Previous Events with Unknown 
+    id: replace_previous_unknown
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.fill_missing_values
+    partial: 
+      df: ${{ workflow.replace_previous_missing.return }}
+      subset: [
+        "Animal responsible",
+        "Boma type",
+        "Livestock species",
+        "Type of claim",
+        "Where were the livestock when the attack happened"
+        ]
+      value: "Unknown"
+
+  - name: Compute total livestock killed in current events
+    id: compute_current_killed_total
+    task: ecoscope.platform.tasks.analysis.apply_arithmetic_operation_over_rows
+    partial:
+      df: ${{ workflow.replace_current_unknown.return }}
+      column_a: "total_adult_livestock_killed"
+      column_b: "total_young_livestock_killed"
+      output_column: "total_animals_killed"
+      operation: "add"
+
+  - name: Compute total livestock killed in previous events
+    id: compute_previous_killed_total
+    task: ecoscope.platform.tasks.analysis.apply_arithmetic_operation_over_rows
+    partial:
+      df: ${{ workflow.replace_previous_unknown.return }}
+      column_a: "total_adult_livestock_killed"
+      column_b: "total_young_livestock_killed"
+      output_column: "total_animals_killed"
+      operation: "add"
+
+  - name: Persist current events as csv
+    id: current_events_df
+    task: persist_df 
+    partial: 
+      df: ${{ workflow.compute_current_killed_total.return }}
+      filename: "current_events"
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: "csv"
+
+  - name: Persist previous events as csv
+    id: previous_events_df
+    task: persist_df 
+    partial: 
+      df: ${{ workflow.compute_previous_killed_total.return }}
+      filename: "previous_events"
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: "csv"
 
   - name: Overall Predation Incidents Summary
     id: overall_predation_incidents
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      data: ${{ workflow.current_total_killed.return }}
+      data: ${{ workflow.compute_current_killed_total.return }}
       index_col: "Animal responsible"
       column_col: "Livestock species"
       aggfunc: "sum"
@@ -699,34 +710,31 @@ workflow:
       margins: true
       value_col: null 
       margins_name: "Total"
+      fill_value: 0 
+      normalize: false
+      dropna: false
 
   - name: Overall Livestock Killed Summary
     id: overall_predation_killed 
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
-      data: ${{ workflow.current_total_killed.return }}
+      data: ${{ workflow.compute_current_killed_total.return }}
       index_col: "Animal responsible"
       column_col: "Livestock species"
-      value_col: "Total animals killed"
+      value_col: "total_animals_killed"
       aggfunc: "sum"
       reset_index: false
       margins: true
       margins_name: "Total"
-      
-
+      normalize: false 
+      fill_value: 0 
+      dropna: false
+    
   - name: Overall Compensation Value Summary
     id: overall_compensation_summary 
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      data: ${{ workflow.convert_current_to_int.return }}
+      data: ${{ workflow.compute_current_killed_total.return }}
       index_col: "Animal responsible"
       column_col: "Livestock species"
       value_col: "Compensation value to owner"
@@ -734,48 +742,23 @@ workflow:
       reset_index: false
       margins: true
       margins_name: "Total"
+      normalize: false 
+      fill_value: 0 
+      dropna: false
 
   - name: Compile Overall Predation Summary Table
     id: overall_summary_table 
     task: summarize_predation_table 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
       incidents: ${{ workflow.overall_predation_incidents.return }}
       kills: ${{ workflow.overall_predation_killed.return }}
       compensation: ${{ workflow.overall_compensation_summary.return }}
 
-  - name: Convert Overall Summary to Integer
-    id: convert_overall_summary_int 
-    task: convert_numeric_to_int 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.overall_summary_table.return }}
-
-  - name: Format Overall Summary Numbers
-    id: format_overall_summary 
-    task: format_numeric_with_commas 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.convert_overall_summary_int.return }}
-
   - name: Save Overall Predation Summary Table
     id: persist_overall_table 
     task: persist_df 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      df: ${{ workflow.format_overall_summary.return }}
+      df: ${{ workflow.overall_summary_table.return }}
       filename: "overall_predation_summary"
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: "geoparquet"
@@ -785,27 +768,19 @@ workflow:
     id: split_by_ranch 
     task: split_groups
     partial: 
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
       groupers: ${{ workflow.groupers.return }}
 
   - name: Split Previous Predation Events by Ranch
     id: split_previous_by_ranch
     task: split_groups
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
-      df: ${{ workflow.previous_total_killed.return }}
+      df: ${{ workflow.compute_previous_killed_total.return }}
       groupers: ${{ workflow.groupers.return }}
 
   - name: Predation Incidents Summary by Ranch
     id: predation_ranch_incidents
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       index_col: "Animal responsible"
       column_col: "Livestock species"
@@ -814,6 +789,10 @@ workflow:
       margins: true 
       value_col: null
       margins_name: "Total"
+      normalize: false 
+      fill_value: 0 
+      dropna: false 
+
     mapvalues:
       argnames: data 
       argvalues: ${{ workflow.split_by_ranch.return }}
@@ -821,18 +800,18 @@ workflow:
   - name: Livestock Killed Summary by Ranch
     id: predation_ranch_killed
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       index_col: "Animal responsible"
       column_col: "Livestock species"
-      value_col: "Total animals killed"
+      value_col: "total_animals_killed"
       aggfunc: "sum"
       reset_index: false
-      margins: true 
+      margins: true
       margins_name: "Total"
+      normalize: false
+      fill_value: 0
+      dropna: false
+
     mapvalues:
       argnames: data
       argvalues: ${{ workflow.split_by_ranch.return }}
@@ -840,10 +819,6 @@ workflow:
   - name: Compensation Value Summary by Ranch
     id: predation_ranch_compensation
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       index_col: "Animal responsible"
       column_col: "Livestock species"
@@ -852,6 +827,9 @@ workflow:
       reset_index: false
       margins: true
       margins_name: "Total"
+      normalize: false 
+      fill_value: 0 
+      dropna: false
 
     mapvalues:
       argnames: data
@@ -859,9 +837,9 @@ workflow:
 
   - name: Combine Ranch Summary Tables
     id: zip_ranch_summaries 
-    task: zip_groupbykey
+    task: groupbykey
     partial: 
-      sequences: 
+      iterables: 
         - ${{ workflow.predation_ranch_incidents.return }}
         - ${{ workflow.predation_ranch_killed.return }}
         - ${{ workflow.predation_ranch_compensation.return }}
@@ -869,10 +847,6 @@ workflow:
   - name: Compile Predation Summary Table by Ranch
     id: predation_by_ranch_table
     task: summarize_predation_table
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     mapvalues:
       argnames: 
       - incidents
@@ -880,35 +854,9 @@ workflow:
       - compensation
       argvalues: ${{ workflow.zip_ranch_summaries.return }}
 
-  - name: Convert Ranch Summary to Integer
-    id: convert_ranch_summary_int 
-    task: convert_numeric_to_int 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.predation_by_ranch_table.return }}
-
-  - name: Format Ranch Summary Numbers
-    id: format_ranch_summary 
-    task: format_numeric_with_commas 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.convert_ranch_summary_int.return }}
-
   - name: Extract Ranch Name from Data
     id: get_ranch_name 
-    task: dataframe_column_first_unique_str 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: column_first_unique_value
     partial: 
       column_name: Ranch
     mapvalues:
@@ -917,73 +865,62 @@ workflow:
     
   - name: Add Ranch Name to Summary Table
     id: combine_ranch_name_table
-    task: zip_groupbykey
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.get_ranch_name.return }}
-        - ${{ workflow.format_ranch_summary.return }}
+        - ${{ workflow.predation_by_ranch_table.return }}
 
   - name: Save Ranch Predation Summary Table
     id: persist_ranch_table
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: "geoparquet"
     mapvalues:
-      argnames: 
-        - filename 
+      argnames:
+        - filename
         - df
       argvalues: ${{ workflow.combine_ranch_name_table.return }}
 
-  #type of claim 
+  #Type of claim
   - name: Summarize Livestock Killed by Claim Type
     id: claim_type_killed_summary
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
-      data: ${{ workflow.current_total_killed.return }}
+      data: ${{ workflow.compute_current_killed_total.return }}
       index_col: "Type of claim"
       column_col: "Ranch"
-      value_col: "Total animals killed"
+      value_col: "total_animals_killed"
       aggfunc: "sum"
       margins: true
       reset_index: true 
       margins_name: "Total"
+      fill_value: 0
+      normalize: false
+      dropna: false
 
   - name: Convert Claim Type Summary to Integer
     id: convert_claim_type_killed_int 
-    task: convert_numeric_to_int 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.convert_columns_to_int 
     partial: 
       df: ${{ workflow.claim_type_killed_summary.return }}
+      columns: ["Eselengei","Kimana","Mbirikani","Total"]
+      errors: "coerce"
+      fill_value: 0
 
   - name: Format Claim Type Summary Numbers
     id: format_claim_type_killed
-    task: format_numeric_with_commas
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: format_numbers_with_commas
     partial:
       df: ${{ workflow.convert_claim_type_killed_int.return }}
+      columns: ["Eselengei","Kimana","Mbirikani","Total"]
+      decimal_places: null 
+      na_repr: ""
 
   - name: Save Claim Type Summary Table
     id: persist_claim_type_killed
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       df: ${{ workflow.format_claim_type_killed.return }}
       filename: "livestock_killed_by_claim_type"
@@ -994,112 +931,103 @@ workflow:
   - name: Summarize Livestock Killed by Predator Species
     id: predator_killed_summary
     task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
-      data: ${{ workflow.current_total_killed.return }}
+      data: ${{ workflow.compute_current_killed_total.return }}
       index_col: "Animal responsible"
       column_col: "Ranch"
-      value_col: "Total animals killed"
+      value_col: "total_animals_killed"
       aggfunc: "sum"
       reset_index: true
       margins: true
       margins_name: "Total"
+      fill_value: 0 
+      normalize: false 
+      dropna: false 
 
   - name: Convert Predator Summary to Integer
     id: convert_predator_killed_int
-    task: convert_numeric_to_int
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.convert_columns_to_int 
+    partial: 
       df: ${{ workflow.predator_killed_summary.return }}
+      columns: ["Eselengei","Kimana","Mbirikani","Total"]
+      errors: "coerce"
+      fill_value: 0
 
   - name: Format Predator Summary Numbers
     id: format_predator_killed
-    task: format_numeric_with_commas
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: format_numbers_with_commas
     partial:
       df: ${{ workflow.convert_predator_killed_int.return }}
+      columns: ["Eselengei","Kimana","Mbirikani","Total"]
+      decimal_places: null 
+      na_repr: ""
   
   - name: Save Predator Summary Table
     id: persist_predator_killed
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       df: ${{ workflow.format_predator_killed.return }}
       filename: "livestock_killed_by_predator_species"
       filetype: "geoparquet"
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
 
-  # Location of attack 
+  # Location of attack --livestock
   - name: Summarize Livestock Attacks by Location
     id: location_attack_table 
-    task: aggregate_by 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
     partial: 
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
       group_col: "Where were the livestock when the attack happened"
       agg_func: "count"
       agg_col: null
       add_percent: true
-      agg_col_name: "Count"
+      agg_col_name: null 
       sort: "asc"
-  
+      pct_col_name: "percentage" 
+      decimals: 1 
+
   - name: Convert Location Summary to Integer
     id: convert_location_attack_int
-    task: convert_numeric_to_int
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.convert_columns_to_int 
+    partial: 
       df: ${{ workflow.location_attack_table.return }}
+      columns: ["Count"]
+      errors: "coerce"
+      fill_value: 0
     
   - name: Format Location Summary Numbers
     id: format_location_attack
-    task: format_numeric_with_commas
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: format_numbers_with_commas
     partial:
       df: ${{ workflow.convert_location_attack_int.return }}
+      columns: ["Count"]
+      decimal_places: null 
+      na_repr: ""
 
   - name: Save Location of Attack Summary Table
     id: persist_location_attack
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       df: ${{ workflow.format_location_attack.return }}
       filename: "livestock_attacks_by_location"
       filetype: "geoparquet"
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
 
-  - name: Summarize Predation Incidents by Predator and Location
-    id: generate_predation_summary_table 
-    task: crosstab_summary
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+  # Predation incidents by predator and location
+  - name: Coerce attack location to string before pivoting
+    id: str_attack_location
+    task: extract_column_as_type
     partial:
-      data: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
+      column_name: "Where were the livestock when the attack happened"
+      output_type: str
+      output_column_name: "Where were the livestock when the attack happened"
+
+  - name: Summarize Predation Incidents by Predator and Location
+    id: generate_predation_summary_table
+    task: crosstab_summary
+    partial:
+      data: ${{ workflow.str_attack_location.return }}
       index_col: "Animal responsible"
       column_col: "Where were the livestock when the attack happened"
       value_col: "id"
@@ -1107,64 +1035,37 @@ workflow:
       reset_index: true
       margins_name: "Total"
       margins: false
-  
-  - name: Convert Predation Summary to Integer
-    id: convert_predation_summary_int
-    task: convert_numeric_to_int
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.generate_predation_summary_table.return }}
+      fill_value: 0 
+      normalize: false
+      dropna: false
 
   - name: Count Predation Incidents by Predator
     id: predation_location_incidents 
-    task: aggregate_by
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
       group_col: "Animal responsible"
       agg_func: "count"
       agg_col_name: "Total Incidents"
       sort: "asc"
       agg_col: null 
       add_percent: false
-  
-  - name: Convert Predation Location Incidents to Integer
-    id: convert_pred_incidents_int
-    task: convert_numeric_to_int
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.predation_location_incidents.return }}
+      pct_col_name: percentage
+      decimals: 1  
 
   - name: Calculate Predation Incident Percentages
     id: predation_summary_pct
     task: to_percent 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      df: ${{ workflow.convert_predation_summary_int.return }}
+      df: ${{ workflow.generate_predation_summary_table.return }}
       decimals: 1
 
   - name: Merge Predation Location Table with Percentages
     id: merge_predation_pct
     task: merge_two_dataframes
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
-      left: ${{ workflow.predation_summary_pct.return }}
-      right: ${{ workflow.convert_pred_incidents_int.return }}
+      left: ${{ workflow.predation_location_incidents.return }}
+      right: ${{ workflow.predation_summary_pct.return }}
       on: "Animal responsible"
       how: "left"
       left_on: null 
@@ -1173,32 +1074,11 @@ workflow:
       right_index: false 
       fillna_value: null 
 
-  - name: Reorder Predation Location Summary Columns
-    id: reorder_predation_summary
-    task: reorder_cols
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.merge_predation_pct.return }}
-      cols: [
-            "Animal responsible",
-            "Total Incidents",
-            "Inside Boma",
-            "Within 200m of Boma",
-            "More than 200m from Boma",
-        ]
-
   - name: Save Predation by Location and Predator Table
     id: persist_predation_sum_location
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
-      df: ${{ workflow.reorder_predation_summary.return }}
+      df:  ${{ workflow.merge_predation_pct.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "predation_incidents_by_predator_and_location"
       filetype: "geoparquet"
@@ -1206,54 +1086,55 @@ workflow:
   # Boma 
   - name: Summarize Predation Incidents by Boma Type
     id: boma_pred_incidents
-    task: aggregate_by
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
     partial: 
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
       group_col: "Boma type"
       agg_func: "count"
       agg_col_name: "Total Incidents"
       agg_col: null
       add_percent: true
       sort: "asc"
-  
-  - name: Format Boma Summary Numbers
-    id: format_boma_incidents
-    task: format_numeric_with_commas
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
+      decimals: 1 
+      pct_col_name: "percentage"
+
+  - name: Convert Boma Summary to Integer
+    id: convert_boma_sum_int
+    task: ecoscope_workflows_ext_mnc.tasks.transformation.convert_columns_to_int 
+    partial: 
       df: ${{ workflow.boma_pred_incidents.return }}
+      columns: ["Count"]
+      errors: "coerce"
+      fill_value: 0
+    
+  - name: Format Boma Summary Numbers
+    id: format_boma_summary
+    task: format_numbers_with_commas
+    partial:
+      df: ${{ workflow.convert_boma_sum_int.return }}
+      columns: ["Count"]
+      decimal_places: null 
+      na_repr: ""
 
   - name: Save Boma Predation Incidents Table
     id: persist_boma_incidents
     task: persist_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:    
-      df: ${{ workflow.format_boma_incidents.return }}
+      df: ${{ workflow.format_boma_summary.return }}
       filename: "predation_incidents_by_boma_type"
       filetype: "geoparquet"
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
 
   - name: Assign animal responsible colors
     id: animal_responsible_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial: 
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.compute_current_killed_total.return }}
       col: "Animal responsible"
-      color_dict:
+      new_col: "animal_responsible_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false   
+      mapping:
         "Caracal": "#fd7f6f"
         "Cheetah": "#7eb0d5"
         "Elephant": "#b2e061"
@@ -1266,327 +1147,193 @@ workflow:
    
   - name: Assign boma type colors
     id: boma_type_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.animal_responsible_colors.return }}
       col: "Boma type"
-      color_dict:
+      new_col: "boma_type_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false
+      mapping:
         "Permanent": "#fd7f6f"
         "Temporary": "#7eb0d5"
 
   - name: Assign livestock location colors 
     id: livestock_location_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.boma_type_colors.return }}
       col: "Where were the livestock when the attack happened"
-      color_dict:
+      new_col: "livestock_attack_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false
+      mapping:
         "Inside Boma": "#fd7f6f"
         "More than 200m from Boma": "#7eb0d5"
         "Within 200m of Boma": "#b2e061"
       
   - name: Assign Color Scheme for Claim Types
     id: claim_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.livestock_location_colors.return }}
       col: "Type of claim"
-      color_dict:
+      new_col: "type_of_claim_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false
+      mapping:
         "Bad Boma": "#beb9db"
         "No Penalty": "#b2e061"
         "Lost in the Bush": "#7eb0d5"
   
   - name: Assign Color Scheme for Ranches
     id: ranch_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.claim_colors.return }}
       col: "Ranch"
-      color_dict:
+      new_col: "ranch_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false
+      mapping:
         "Eselengei": "#fd7f6f"
         "Kimana": "#7eb0d5"
         "Mbirikani": "#b2e061"
     
   - name: Assign Color Scheme for Livestock Species
     id: livestock_species_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: map_column_value
     partial:
-      df: ${{ workflow.current_total_killed.return }}
+      df: ${{ workflow.ranch_colors.return }}
       col: "Livestock species"
-      color_dict:
+      new_col: "livestock_species_colors"
+      default: "#f0f8ff"
+      keep_unmapped: false
+      mapping:
         "Shoat": "#0000ff"
         "Cow": "#8b0000"
         "Donkey": "#ffff00"
         
-  - name: Map animal responsible colors to current events 
-    id: map_animal_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.current_total_killed.return }}
-      col: "Animal responsible"
-      mapping: ${{ workflow.animal_responsible_colors.return }}
-      new_col: "animal_responsible_colors"
+  - name: Add rgba columns from hex 
+    id: add_rgba_columns 
+    task: add_rgba_columns_from_hex
+    partial: 
+      df: ${{ workflow.livestock_species_colors.return }}
+      columns: [
+        "animal_responsible_colors",
+        "boma_type_colors",
+        "livestock_attack_colors",
+        "type_of_claim_colors",
+        "ranch_colors",
+        "livestock_species_colors",
+        
+        ]
 
-  - name: Map boma type colors to current events
-    id: map_boma_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_animal_colors.return }}
-      col: "Boma type"
-      mapping: ${{ workflow.boma_type_colors.return }}
-      new_col: "boma_type_colors"
-  
-  - name: Map livestock location colors to current events
-    id: map_location_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_boma_colors.return }}
-      col: "Where were the livestock when the attack happened"
-      mapping: ${{ workflow.livestock_location_colors.return }}
-      new_col: "livestock_location_colors"
-  
-  - name: Map claim type colors to current events
-    id: map_claim_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_location_colors.return }}
-      col: "Type of claim"
-      mapping: ${{ workflow.claim_colors.return }}
-      new_col: "type_of_claim_colors"
-
-  - name: Map ranch colors to current events
-    id: map_ranch_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_claim_colors.return }}
-      col: "Ranch"
-      mapping: ${{ workflow.ranch_colors.return }}
-      new_col: "ranch_colors"
-
-  - name: Map livestock species colors to current events
-    id: map_livestock_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_ranch_colors.return }}
-      col: "Livestock species"
-      mapping: ${{ workflow.livestock_species_colors.return }}
-      new_col: "livestock_species_colors"
-  
+  # Draw charts 
   - name: Draw total livestock killed pie chart 
     id: total_livestock_pie_chart
-    task: draw_pie_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
     partial:
-      dataframe: ${{ workflow.map_livestock_colors.return }}
-      value_column: "Total animals killed"
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
+      value_column: "total_animals_killed"
       label_column: "Animal responsible"
-      color_column: "animal_responsible_colors"
+      color_column: "animal_responsible_colors_rgba"
       plot_style: 
         textinfo: "percent+label+value"
       layout_style: 
-        font_size: 15 
+        font_size: 12
         font_style: "normal"
         showlegend: true 
     
   - name: Persist total livestock killed pie chart
     id: persist_total_livestock_pie
     task: persist_text 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
       text: ${{ workflow.total_livestock_pie_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_killed_by_predator_pie.html"
       filename_suffix: null 
 
-  - name: Convert total livestock killed pie chart to png
-    id: convert_total_livestock_pie_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_total_livestock_pie.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw compensation value by predator pie chart 
     id: compensation_pred_pie_chart
-    task: draw_pie_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
     partial:
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Compensation value to owner"
       label_column: "Animal responsible"
-      color_column: "animal_responsible_colors"
+      color_column: "animal_responsible_colors_rgba"
       plot_style:
         textinfo: "percent+label+value"
       layout_style:
-        font_size: 15
+        font_size: 12
         font_style: "normal"
         showlegend: true
 
   - name: Persist compensation by predator pie chart
     id: persist_compensation_pred_pie
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.compensation_pred_pie_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "compensation_value_by_predator_pie.html"
       filename_suffix: null
-
-  - name: Convert compensation by predator pie chart to png
-    id: convert_comp_pred_pie_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_compensation_pred_pie.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
   
   - name: Draw compensation value by ranch pie chart 
     id: compensation_ranch_pie_chart
-    task: draw_pie_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
     partial:
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Compensation value to owner"
       label_column: "Ranch"
-      color_column: "ranch_colors"
+      color_column: "ranch_colors_rgba"
       plot_style:
         textinfo: "percent+label+value"
       layout_style:
-        font_size: 15
+        font_size: 12
         font_style: "normal"
         showlegend: true
   
   - name: Persist compensation by ranch pie chart
     id: persist_compensation_ranch_pie
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.compensation_ranch_pie_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "compensation_value_by_ranch_pie.html"
       filename_suffix: null
   
-  - name: Convert compensation by ranch pie chart to png
-    id: convert_comp_ranch_pie_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_compensation_ranch_pie.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw total animals killed by claim type stacked bar chart 
     id: killed_claim_stacked_bar
-    task: draw_custom_stacked_bar_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
     partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
-      x_axis: "Ranch"
-      y_axis: "Total animals killed"
-      agg_function: sum
+      dataframe: ${{ workflow.add_rgba_columns.return }}
+      category: "Ranch"
+      mode: stacked
+      y_axis: "total_animals_killed"
       stack_column: "Type of claim"
-      color_column: "type_of_claim_colors"
-      category_order: null
+      agg_function: sum
       stack_order: ["Lost in the Bush", "No Penalty", "Bad Boma"]
+      ascending: true 
+      color_column: "type_of_claim_colors_rgba"
       plot_style:
         xperiodalignment: "middle"
-      
+      bar_chart_configs: null 
+      overlay_opacity: 0.6 
+      category_order: null
+      widget_id: null      
       layout_style:
-        font_size: 15
-        font_style: "normal"
-        showlegend: true
-        bargap: 0.1
+        bargap: 0.05 
+        bargroupgap: 0.05 
+        title: null 
+        title_x: 0.01
+        title_y: 0.95 
+        showlegend: true 
+        font_size: 12
         font_color: "#222222"
         plot_bgcolor: "#f5f5f5"
-        title_x: 0.5 
         xaxis: 
           title: "Ranch"
         yaxis:
@@ -1595,60 +1342,42 @@ workflow:
   - name: Persist total animals killed by claim type stacked bar chart
     id: persist_killed_claim_stacked_bar
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:  
       text: ${{ workflow.killed_claim_stacked_bar.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_killed_by_claim_type_bar.html"
       filename_suffix: null
 
-  - name: Convert total animals killed by claim type stacked bar chart to png
-    id: convert_total_lvstk_stacked_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_killed_claim_stacked_bar.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw total number of claims by ranch stacked bar chart 
     id: claims_ranch_stacked_bar
-    task: draw_custom_stacked_bar_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
     partial:
-      dataframe: ${{ workflow.map_livestock_colors.return }}
-      x_axis: "Ranch"
+      dataframe: ${{ workflow.add_rgba_columns.return }}
+      category: "Ranch"
+      mode: stacked
       y_axis: "id"
-      agg_function: count
       stack_column: "Type of claim"
-      color_column: "type_of_claim_colors"
-      category_order: null
+      agg_function: count
       stack_order: ["Lost in the Bush", "No Penalty", "Bad Boma"]
+      ascending: true 
+      color_column: "type_of_claim_colors_rgba"
       plot_style:
         xperiodalignment: "middle"
-
+      bar_chart_configs: null 
+      overlay_opacity: 0.6 
+      category_order: null
+      widget_id: null      
       layout_style:
-        font_size: 15
-        font_style: "normal"
-        showlegend: true
-        bargap: 0.1
+        bargap: 0.05 
+        bargroupgap: 0.05 
+        title: null 
+        title_x: 0.01
+        title_y: 0.95 
+        showlegend: true 
+        font_size: 12
         font_color: "#222222"
         plot_bgcolor: "#f5f5f5"
-        title_x: 0.5 
-        xaxis:
+        xaxis: 
           title: "Ranch"
         yaxis:
           title: "Number of claims"
@@ -1656,242 +1385,149 @@ workflow:
   - name: Persist total number of claims by ranch stacked bar chart
     id: persist_claims_ranch_stacked_bar
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.claims_ranch_stacked_bar.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "claim_count_by_type_bar.html"
       filename_suffix: null
   
-  - name: Convert total number of claims by ranch stacked bar chart to png
-    id: convert_claims_ranch_stacked_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_claims_ranch_stacked_bar.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw total animals killed by predator species 100% stacked bar chart
     id: killed_predator_stacked_bar
-    task: draw_custom_100_stacked_bar_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
     partial:
-      dataframe: ${{ workflow.map_livestock_colors.return }}
-      x_axis: "Ranch"
-      agg_function: "sum"
-      y_axis: "Total animals killed"
+      dataframe: ${{ workflow.add_rgba_columns.return }}
+      category: "Ranch"
+      mode: percent_stacked
+      y_axis: "total_animals_killed"
       stack_column: "Animal responsible"
-      color_column: "animal_responsible_colors"
+      agg_function: sum
       stack_order: ["Hyena", "Jackal", "Lion"]
+      ascending: true 
+      color_column: "animal_responsible_colors_rgba"
       plot_style:
         xperiodalignment: "middle"
-
+      bar_chart_configs: null 
+      overlay_opacity: 0.6 
+      category_order: null
+      widget_id: null      
       layout_style:
-        font_size: 15
-        font_style: "normal"
-        showlegend: true
-        bargap: 0.1
+        bargap: 0.05 
+        bargroupgap: 0.05 
+        title: null 
+        title_x: 0.01
+        title_y: 0.95 
+        showlegend: true 
+        font_size: 12
         font_color: "#222222"
         plot_bgcolor: "#f5f5f5"
-        title_x: 0.5 
-        xaxis:
+        xaxis: 
           title: "Ranch"
         yaxis:
           title: "Percentage"
-  
+
   - name: Persist total animals killed by predator species 100% stacked bar chart
     id: persist_killed_pred_stacked_bar
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.killed_predator_stacked_bar.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_killed_by_predator_pct_bar.html"
       filename_suffix: null
 
-  - name: Convert total animals killed by predator species 100% stacked bar chart to png
-    id: convert_killed_pred_stacked_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_killed_pred_stacked_bar.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw location of livestock attack pie chart 
     id: location_attack_pie_chart
-    task: draw_pie_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
     partial:
-      dataframe: ${{ workflow.map_location_colors.return }}
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Where were the livestock when the attack happened" #"Total Incidents"
       label_column: "Where were the livestock when the attack happened"
-      color_column: "livestock_location_colors"
+      color_column: "livestock_attack_colors_rgba"
       plot_style:
         textinfo: "percent+label+value"
       layout_style:
-        font_size: 15
+        font_size: 12
         font_style: "normal"
         showlegend: true
   
   - name: Persist location of livestock attack pie chart
     id: persist_location_attack_pie
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.location_attack_pie_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_attack_location_pie.html"
       filename_suffix: null
 
-  - name: Convert location of livestock attack pie chart to png
-    id: convert_location_attack_pie_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_location_attack_pie.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   # Boma  boma_pred_incidents
-  - name: Assign boma predation type colors 
-    id: boma_predation_type_colors
-    task: get_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.boma_pred_incidents.return }}
-      col: "Boma type"
-      color_dict:
-        "Permanent": "#fd7f6f"
-        "Temporary": "#7eb0d5"
-
-  - name: Map boma predation type colors
-    id: map_boma_pred_colors
-    task: map_color_column_value
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.boma_pred_incidents.return }}
-      col: "Boma type"
-      mapping: ${{ workflow.boma_predation_type_colors.return }}
-      new_col: "boma_type_colors"
-
   - name: Draw type of bomas targeted in livestock attacks pie chart 
     id: boma_type_pie_chart
-    task: draw_pie_chart
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
     partial:
-      dataframe: ${{ workflow.map_boma_pred_colors.return }}
-      value_column: "Total Incidents"
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
+      value_column: "Boma type"
       label_column: "Boma type"
-      color_column: "boma_type_colors"
+      color_column: "boma_type_colors_rgba"
       plot_style:
         textinfo: "percent+label+value"
       layout_style:
-        font_size: 15
+        font_size: 12
         font_style: "normal"
         showlegend: true
   
   - name: Persist type of bomas targeted in livestock attacks pie chart
     id: persist_boma_type_pie_chart
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.boma_type_pie_chart.return }}    
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "boma_type_targeted_pie.html"
       filename_suffix: null
 
-  - name: Convert type of bomas targeted in livestock attacks pie chart to png
-    id: convert_boma_type_pie_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_boma_type_pie_chart.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw time of attack bar chart 
     id: time_of_attack_bar_chart 
-    task: draw_custom_bar_chart 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_bar_chart
+    partial:
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       category: "Time of attack"
+      mode: grouped
+      y_axis: null
+      stack_column: null
+      agg_function: count
+      stack_order: null
+      ascending: true 
+      color_column: null
+      plot_style:
+        xperiodalignment: "middle"
+      bar_chart_configs:
+        - column: "Time of attack"
+          label: "Percent"
+          agg_func: "count"
+          show_label: true 
+          style: 
+            marker_color: "#6495ed"
+            textposition: null 
+            texttemplate: null 
+
+      overlay_opacity: 0.6 
       category_order: [
             "Morning (06:00 - 11:59)",
             "Afternoon (12:00 - 16:59)",
             "Evening (17:00 - 19:59)",
             "Night (20:00 - 05:59)",
         ]
-      bar_chart_configs:
-        - column: "Time of attack"
-          agg_func: "count"
-          label: "Percent"
-          show_label: true 
-
-      layout_kwargs: 
-        font_size: 15 
-        plot_bgcolor: "#f5f5f5"
+      widget_id: null      
+      layout_style:
+        bargap: 0.05 
+        bargroupgap: 0.05 
+        title: null 
+        title_x: 0.01
+        title_y: 0.95 
         showlegend: false
+        font_size: 12
+        font_color: "#222222"
+        plot_bgcolor: "#f5f5f5"
         xaxis: 
           title: "Time of day"
         yaxis:
@@ -1900,705 +1536,147 @@ workflow:
   - name: Persist time of attack bar chart
     id: persist_time_of_attack_bar_chart
     task: persist_text  
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial: 
       text: ${{ workflow.time_of_attack_bar_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "predation_incidents_by_time_of_day_bar.html"
       filename_suffix: null
 
-  - name: Convert time of attack bar chart to png
-    id: convert_time_attack_bar_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_time_of_attack_bar_chart.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
+  - name: Select Time Frequency 
+    id: time_frequency
+    task: select_time_frequency 
 
-  # Overall density map
-  - name: Generate density grid 
-    id: generate_predation_grids 
-    task: generate_density_grid
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      features_gdf: ${{ workflow.map_livestock_colors.return }}
-      cell_size_meters: 2000 
-      geometry_type: "point"
-
-  - name: Sort density grid values in ascending order
-    id: sort_density_grid
-    task: sort_values
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.generate_predation_grids.return }}
-      column_name: "density"
-      ascending: true
-      na_position: "last"
-
-  - name: Apply bin classification to density grid
-    id: density_bins
-    task: apply_classification 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      input_column_name: density
-      output_column_name: density_bins
-      df: ${{ workflow.sort_density_grid.return }}
-      label_options: 
-        label_ranges: true 
-        label_decimals: 0 
-      classification_options: 
-        scheme: "equal_interval"
-        k: 5
-
-  - name: Apply colormap to density bins 
-    id: apply_density_colormap
-    task: apply_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.density_bins.return }}
-      input_column_name: density_bins 
-      output_column_name: density_bins_colors
-      colormap: ["#FFF7BC", "#FD8D3C", "#F03B20", "#BD0026", "#99000D"]
-
-  - name: Create density grid layers
-    id: generate_density_layers
-    task: create_geojson_layer
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      layer_style: 
-        filled: true 
-        stroked: true 
-        extruded: false 
-        wireframe: false
-        get_fill_color: density_bins_colors
-        get_line_color: [0,0,0,200]
-        opacity: 0.55 
-        get_line_width: 0.35
-        get_elevation: 0
-        get_point_radius: 1
-        line_width_units: pixels 
-        line_width_scale: 1 
-        line_width_min_pixels: 1
-        line_width_max_pixels: 5
-
-      legend: 
-        title: Density
-        label_column: density_bins
-        color_column: density_bins_colors
-        sort: null
-        label_suffix: null
-      
-      geodataframe: ${{ workflow.apply_density_colormap.return }}
-
-  - name: Overlay Predation Density Grid on Amboseli Map
-    id: combine_ambo_grid_layers
-    task: combine_deckgl_map_layers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      static_layers: 
-        - ${{ workflow.create_ambo_layers_styled.return }}
-        - ${{ workflow.create_ambo_boundaries_styled.return }}
-      grouped_layers: 
-        - ${{ workflow.generate_density_layers.return }}
-
-  - name: Calculate Zoom Level for Predation Density Map
-    id: density_zoom_value
-    task: view_state_deck_gdf
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      pitch: 0
-      bearing: 0
-      gdf: ${{ workflow.apply_density_colormap.return }}
-
-  - name: Draw Predation Incident Density Map
-    id: draw_density_map
-    task: draw_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      tile_layers: ${{ workflow.configure_base_maps.return }}
-      static: false
-      title: null
-      max_zoom: 10
-      legend_style:
-        placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_ambo_grid_layers.return }}
-      view_state: ${{ workflow.density_zoom_value.return }} 
-
-  - name: Save Predation Density Map
-    id: persist_density_urls
-    task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.draw_density_map.return }}
-      filename: predation_incident_density_map.html  # -- convert this to png
-
-  - name: Convert predation density map to png
-    id: convert_density_map_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_density_urls.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 40000
-        max_concurrent_pages: 1
-
-  # Boma density map
-  - name: Filter Events to Boma Attacks Only
-    id: filter_boma_events
-    task: filter_df
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      df: ${{ workflow.map_livestock_colors.return }}
-      column_name: "Where were the livestock when the attack happened"
-      op: equal 
-      reset_index: false
-      value: "Inside Boma"
-
-  - name: Generate boma density grid 
-    id: generate_boma_density_grid
-    task: generate_density_grid
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      features_gdf: ${{ workflow.filter_boma_events.return }}
-      cell_size_meters: 2000 
-      geometry_type: "point"
-
-  - name: Sort boma density grid values in ascending order
-    id: sort_boma_density_grid
-    task: sort_values
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.generate_boma_density_grid.return }}
-      column_name: "density"
-      ascending: true
-      na_position: "last"
-  
-  - name: Apply bin classification to boma density grid
-    id: density_boma_bins
-    task: apply_classification 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      input_column_name: density
-      output_column_name: density_bins
-      df: ${{ workflow.sort_boma_density_grid.return }}
-      label_options: 
-        label_ranges: true 
-        label_decimals: 0 
-      classification_options: 
-        scheme: "equal_interval"
-        k: 5
-
-  - name: Apply colormap to boma density bins 
-    id: apply_density_boma_colormap
-    task: apply_color_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.density_boma_bins.return }}
-      input_column_name: density_bins 
-      output_column_name: density_bins_colors
-      colormap: ["#FFF7BC", "#FD8D3C", "#F03B20", "#BD0026", "#99000D"]
-
-  - name: Create boma density grid layers
-    id: generate_boma_density_layers
-    task: create_geojson_layer
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      layer_style: 
-        filled: true 
-        stroked: true 
-        extruded: false 
-        wireframe: false
-        get_fill_color: density_bins_colors
-        get_line_color: [0,0,0,200]
-        opacity: 0.55 
-        get_line_width: 0.35
-        get_elevation: 0
-        get_point_radius: 1
-        line_width_units: pixels 
-        line_width_scale: 1 
-        line_width_min_pixels: 1
-        line_width_max_pixels: 5
-
-      legend: 
-        title: Density
-        label_column: density_bins
-        color_column: density_bins_colors
-        sort: null
-        label_suffix: null
-      
-      geodataframe: ${{ workflow.apply_density_boma_colormap.return }}
-
-  - name: Overlay Boma Density Grid on Amboseli Map
-    id: combine_ambo_boma_grid_layers
-    task: combine_deckgl_map_layers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      static_layers: 
-        - ${{ workflow.create_ambo_layers_styled.return }}
-        - ${{ workflow.create_ambo_boundaries_styled.return }}
-      grouped_layers: 
-        - ${{ workflow.generate_boma_density_layers.return }}
-
-  - name: Calculate Zoom Level for Boma Density Map
-    id: density_boma_zoom_value
-    task: view_state_deck_gdf
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      pitch: 0
-      bearing: 0
-      gdf: ${{ workflow.apply_density_boma_colormap.return }}
-
-  - name: Draw boma density map
-    id: draw_density_boma_map
-    task: draw_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      tile_layers: ${{ workflow.configure_base_maps.return }}
-      static: false
-      title: null
-      max_zoom: 10
-      legend_style:
-        placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_ambo_boma_grid_layers.return }}
-      view_state: ${{ workflow.density_boma_zoom_value.return }} 
-
-  - name: Persist boma density map 
-    id: persist_density_boma_urls
-    task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.draw_density_boma_map.return }}
-      filename: boma_predation_density_map.html  # -- convert this to png
-
-  - name: Convert boma density map to png
-    id: convert_density_boma_map_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_density_boma_urls.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 40000
-        max_concurrent_pages: 1
-
-  # Livestock predation map
-  - name: Remove Geographic Outliers from Events
-    id: exclude_event_outliers
-    task: exclude_geom_outliers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      df: ${{ workflow.map_livestock_colors.return }}
-      z_threshold: 3
-
-  - name: Remove invalid points from events
-    id: remove_invalid_geoms
-    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_null_geometry
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      gdf: ${{ workflow.exclude_event_outliers.return }}
-      geometry_column: geometry 
-
-  - name: Generate livestock predation event scatterplot layer
-    id: generate_livestock_layer
-    task: create_scatterplot_layer
-    skipif:
-      conditions: 
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      layer_style:
-        get_fill_color: livestock_species_colors
-        get_line_color: livestock_species_colors
-        get_radius : 4
-        opacity: 0.75
-        stroked: true
-      legend: 
-        title: "Livestock species"
-        label_column: "Livestock species"
-        color_column: "livestock_species_colors"
-        sort: ascending
-        label_suffix: null
-      geodataframe: ${{ workflow.remove_invalid_geoms.return }}
-
-  - name: Overlay Livestock Events on Amboseli Map
-    id: combine_ambo_lvs_layers
-    task: combine_deckgl_map_layers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial: 
-      static_layers: 
-        - ${{ workflow.create_ambo_layers_styled.return }}
-        - ${{ workflow.create_ambo_boundaries_styled.return }}
-      grouped_layers: 
-        - ${{ workflow.generate_livestock_layer.return }}
-
-  - name: Calculate Zoom Level for Livestock Event Map
-    id: livestock_zoom_value
-    task: view_state_deck_gdf
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      pitch: 0
-      bearing: 0
-      gdf: ${{ workflow.remove_invalid_geoms.return }}
-
-  - name: Draw livestock predation event map
-    id: draw_livestock_map
-    task: draw_map
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      tile_layers: ${{ workflow.configure_base_maps.return }}
-      static: false
-      title: null
-      max_zoom: 10
-      legend_style:
-        placement: "bottom-right"
-      geo_layers: ${{ workflow.combine_ambo_lvs_layers.return }}
-      view_state: ${{ workflow.livestock_zoom_value.return }} 
-
-  - name: Persist livestock predation event map
-    id: persist_livestock_map
-    task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      text: ${{ workflow.draw_livestock_map.return }}
-      filename: livestock_predation_event_map.html  # -- convert this to png
-
-  - name: Convert livestock predation event map to png
-    id: convert_livestock_map_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_livestock_map.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 40000
-        max_concurrent_pages: 1
-
+  # Time series charts 
   - name: Draw multi-line chart of total animals killed by ranch 
     id: ranch_killed_multiline_chart
-    task: draw_custom_multi_line_time_series 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      widget_id: null 
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
-      y_axis: "Total animals killed"
+      y_axis: "total_animals_killed"
       group_column: "Ranch"
-      agg_function: "sum"
-      color_column: "ranch_colors"
-      line_style: 
-        shape: "linear"
-        dash: "solid"
-      fill: false
-      ascending: true
-      plot_style: null
-      group_order: ["Eselengei","Mbirikani", "Kimana"]
+      agg_function: "sum"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      group_order: ["Eselengei","Mbirikani", "Kimana"]
+      fill: false 
+      ascending: false 
+      color_column: "ranch_colors_rgba"
+      plot_style: null
+      line_style: null 
       layout_style: 
-        font_size: 15
-        legend_title: "Ranch"
-        font_style: "normal"
-        font_color: "#222222"
-        showlegend: true
-        hovermode: "x unified"
+        font_size: 12
         plot_bgcolor: "#f5f5f5"
+        font_color: null 
+        font_style: null 
+        showlegend: true 
+        legend_title: "Ranch"
+        title: null 
         title_x: 0.5 
+        title_y: 0.95
         xaxis:
           title: "Date"
-          tickangle: 45 
-          showgrid: true 
-          gridcolor: "#e5e5e5"
         yaxis:
           title: "Number of livestock killed"
-          showgrid: true
-          gridcolor: "#e5e5e5"
 
   - name: Persist multi-line chart of total animals killed by ranch
     id: persist_ranch_killed_multiline
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.ranch_killed_multiline_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_killed_over_time_by_ranch_chart.html"
       filename_suffix: null
 
-  - name: Convert multi-line chart of total animals killed by ranch to png
-    id: convert_ranch_killed_multi_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_ranch_killed_multiline.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name:  Draw multi-line chart of total animals killed by location of attack
     id: location_killed_multiline_chart
-    task: draw_custom_multi_line_time_series 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      widget_id: null 
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
-      y_axis: "Total animals killed"
+      y_axis: "total_animals_killed"
       group_column: "Where were the livestock when the attack happened"
-      agg_function: "sum"
-      color_column: "livestock_location_colors"
-      line_style: 
-        shape: "linear"
-        dash: "solid"
-      fill: true
-      plot_style: null
-      group_order: ["Inside Boma", "Within 200m of Boma", "More than 200m from Boma"]
-      ascending: true
+      agg_function: "sum"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      group_order: ["Inside Boma", "Within 200m of Boma", "More than 200m from Boma"]
+      fill: true
+      ascending: false 
+      color_column: "livestock_attack_colors_rgba"
+      plot_style: null
+      line_style: null 
       layout_style: 
-        font_size: 15
-        legend_title: "Location of attack"
-        font_style: "normal"
-        font_color: "#222222"
-        showlegend: true
-        hovermode: "x unified"
+        font_size: 12
         plot_bgcolor: "#f5f5f5"
+        font_color: null 
+        font_style: null 
+        showlegend: true 
+        legend_title: "Location of attack"
+        title: null 
         title_x: 0.5 
+        title_y: 0.95
         xaxis:
           title: "Date"
-          tickangle: 45 
-          showgrid: true 
-          gridcolor: "#e5e5e5"
         yaxis:
           title: "Number of livestock killed"
-          showgrid: true
-          gridcolor: "#e5e5e5"
 
   - name: Persist multi-line chart of total animals killed by location of attack
     id: persist_loc_killed_multiline
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.location_killed_multiline_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "livestock_killed_over_time_by_attack_location_chart.html"
       filename_suffix: null
 
-  - name: Convert multi-line chart of total animals killed by location of attack to png
-    id: convert_loc_killed_multiline_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_loc_killed_multiline.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
-
   - name: Draw multi-line chart of incidents by type of claim 
     id: claim_type_multiline_chart
-    task: draw_custom_multi_line_time_series 
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      widget_id: null
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
       y_axis: "id"
       group_column: "Type of claim"
-      agg_function: "count"
-      color_column: "type_of_claim_colors"
-      line_style: 
-        shape: "linear"
-        dash: "solid"
-      fill: true 
-      plot_style: null
-      ascending: true
-      group_order: ["Lost in the Bush","No Penalty", "Bad Boma"]
+      agg_function: "count"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      group_order: ["Lost in the Bush","No Penalty", "Bad Boma"]
+      fill: true
+      ascending: false 
+      color_column: "type_of_claim_colors_rgba"
+      plot_style: null
+      line_style: null 
       layout_style: 
-        font_size: 15
-        legend_title: "Type of claim"
-        font_style: "normal"
-        font_color: "#222222"
-        showlegend: true
-        hovermode: "x unified"
+        font_size: 12
         plot_bgcolor: "#f5f5f5"
+        font_color: null 
+        font_style: null 
+        showlegend: true 
+        legend_title: "Type of claim"
+        title: null 
         title_x: 0.5 
+        title_y: 0.95
         xaxis:
           title: "Date"
-          tickangle: 45 
-          showgrid: true 
-          gridcolor: "#e5e5e5"
         yaxis:
           title: "Number of claims"
-          showgrid: true
-          gridcolor: "#e5e5e5"
 
   - name: Persist multi-line chart of incidents by type of claim
     id: persist_claim_type_multiline
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.claim_type_multiline_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "claim_count_over_time_by_type_chart.html"
       filename_suffix: null
-
-  - name: Convert multi-line chart of incidents by type of claim to png
-    id: convert_claim_type_multiline_png
-    task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      html_path: ${{ workflow.persist_claim_type_multiline.return }}
-      config:
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 10
-        max_concurrent_pages: 1
         
   - name: Draw multi-bar time series chart of animals killed by predator species 
     id: predator_killed_multibar_chart
-    task: draw_custom_multi_bar_time_series
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped 
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_faceted_bar_time_series_chart
     partial: 
-      dataframe: ${{ workflow.map_livestock_colors.return }}
+      dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
-      y_axis: "Total animals killed"
+      y_axis: "total_animals_killed"
       group_column: "Animal responsible"
       agg_function: "sum"
       time_frequency: ${{ workflow.time_frequency.return }}
@@ -2614,15 +1692,21 @@ workflow:
         title: "Total animals killed"
       tick_font_size: null 
       plot_style: null 
-      layout_style: null 
+      widget_id: null
+      layout_style:
+        font_size: 12
+        plot_bgcolor: "#f5f5f5"
+        font_color: null 
+        font_style: null 
+        showlegend: true 
+        legend_title: null
+        title: null 
+        title_x: 0.5 
+        title_y: 0.95
       
   - name: Persist multi-bar time series chart of animals killed by predator species
     id: persist_predator_killed_multibar
     task: persist_text
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       text: ${{ workflow.predator_killed_multibar_chart.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -2632,10 +1716,6 @@ workflow:
   - name: Convert multi-line time series chart of incidents by type of claim to png
     id: convert_pred_killed_multibar_png
     task: html_to_png
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       html_path: ${{ workflow.persist_predator_killed_multibar.return }}
@@ -2649,62 +1729,76 @@ workflow:
 
   - name: Group current ranch level groupers and previous ranch level groupers 
     id: group_ranch_level_groupers 
-    task: zip_groupbykey
+    task: groupbykey
     partial: 
-      sequences:
+      iterables:
         - ${{ workflow.split_by_ranch.return }} # current dataframe
         - ${{ workflow.split_previous_by_ranch.return }} # previous dataframe
       
+  - name: Generate historical stats table 
+    id: hist_curr_prev_table 
+    task: generate_grouped_historical_stats_table
+    partial: 
+      time_column: time 
+      target_column: total_animals_killed 
+      group_column: "Animal responsible"
+      time_frequency: ${{ workflow.time_frequency.return }}
+      band_method: "ci_mean"
+      agg_function: "sum"
+      band_level: 0.95 
+    mapvalues: 
+      argnames: 
+        - current_df 
+        - previous_df 
+      argvalues: ${{ workflow.group_ranch_level_groupers.return }}
+      
   - name: Draw historic time series chart
     id: draw_ranch_level_historic_chart
-    task: draw_historic_time_series_chart
+    task: draw_faceted_historic_timeseries
     partial:
-      x_axis: "time"
-      y_axis: "Total animals killed"
-      agg_function: "sum"
-      time_frequency: ${{ workflow.time_frequency.return }}
+      group_column: "Animal responsible"
+      current_value_column: "current_value"
+      current_value_title: "Actual"
+      historic_min_column: "historic_min"
+      historic_max_column: "historic_max"
+      historic_band_title: "95% CI of historic mean"
+      historic_mean_column: "historic_mean"
+      historic_mean_title: "Historic Mean"
+      time_column: "img_date"
       ncols: 2
       shared_yaxes: false
-      row_height: 300
       group_order: null
-      group_column: "Animal responsible"
       ascending: true
+      row_height: 300
       x_axis_style:
         title: "Date"
       y_axis_style:
         title: "Total animals killed"
-      current_line_color: "#6495ed"
-      historical_line_color: "#ff7f0e"
-      ci_fill_color: null
-      ci_multiplier: 1.96
-      ci_method: "seasonal"
-      current_label: Actual
-      historical_label: Historic Mean
-      ci_label: "95% Confidence Interval"
-      layout_style: null 
-      tick_font_size: null
+      band_color: "rgb(143, 188, 139,0.5)"
+      mean_color: "#ff8c00"
+      current_color: "rgb(0, 0, 139)"
+      widget_id: null
+      layout_style:
+        font_size: 12
+        plot_bgcolor: "#f5f5f5"
+        font_color: null 
+        font_style: null 
+        showlegend: true 
+        legend_title: null
+        title: null 
+        title_x: 0.5 
+        title_y: 0.95
     mapvalues: 
-      argnames: 
-        - current_dataframe 
-        - previous_dataframe
-      argvalues: ${{ workflow.group_ranch_level_groupers.return }}
+      argnames: dataframe
+      argvalues: ${{ workflow.hist_curr_prev_table.return }}
 
   - name: Add Ranch Name to Historic chart
     id: combine_ranch_name_chart
-    task: zip_groupbykey
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.get_ranch_name.return }}
         - ${{ workflow.draw_ranch_level_historic_chart.return }}
-
-  - name: Print outputs 
-    id: print_outputs 
-    task: print_output 
-    partial: 
-      label: ranch output
-    mapvalues:
-      argnames: value 
-      argvalues: ${{ workflow.combine_ranch_name_chart.return }}
 
   - name: Persist historic time series chart
     id: persist_ranch_historic_chart
@@ -2734,10 +1828,756 @@ workflow:
       argnames: html_path 
       argvalues: ${{ workflow.persist_ranch_historic_chart.return }}
 
-  # Template generation 
+  - title: Map Zoom & Extent
+    type: task-group
+    description: Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.
+    tasks:
+      - name: null
+        id: zoom_to_envelope
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.envelope_gdf
+        partial:
+          gdf: ${{ workflow.add_rgba_columns.return }}
+          expansion_factor: 1.05
+
+      - name: Zoom view to gdf extent
+        id: gdf_image_extent
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.compute_view_state_from_gdf
+        partial:
+          pitch: 0
+          bearing: 0
+          max_zoom: 15
+          gdf: ${{ workflow.zoom_to_envelope.return }}
+
+  # Livestock Predation Map 
+  - name: Generate livestock predation event scatterplot layer
+    id: generate_livestock_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_scatterplot_layer
+    partial:
+      data_url: null 
+      layer_style:
+        get_fill_color: livestock_species_colors_rgba
+        get_line_color: livestock_species_colors_rgba
+        get_radius : 4
+        opacity: 0.75
+        stroked: true
+      legend: 
+        title: "Livestock species"
+        label_column: "Livestock species"
+        color_column: "livestock_species_colors_rgba"
+        sort: ascending
+        label_suffix: null
+      geodataframe: ${{ workflow.add_rgba_columns.return }}
+
+  - name: Overlay Livestock Events on Amboseli Map
+    id: combine_ambo_lvs_layers
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
+    partial:
+      static_layers:
+        - ${{ workflow.create_land_layer.return }}
+        - ${{ workflow.create_bound_layer.return }}
+        - ${{ workflow.create_fence_layer.return }}
+      grouped_layers: 
+        - ${{ workflow.generate_livestock_layer.return }}
+
+  - name: Draw livestock predation event map
+    id: draw_livestock_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
+    partial:
+      tile_layers: ${{ workflow.configure_base_maps.return }}
+      static: false
+      title: null
+      max_zoom: 10
+      legend_style:
+        placement: "bottom-right"
+      geo_layers: ${{ workflow.combine_ambo_lvs_layers.return }}
+      view_state: ${{ workflow.gdf_image_extent.return }}
+
+  - name: Persist livestock predation event map
+    id: persist_livestock_map
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.draw_livestock_map.return }}
+      filename: livestock_predation_event_map.html  # -- convert this to png
+
+  - name: Convert livestock predation event map to png
+    id: convert_livestock_map_png
+    task: html_to_png
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      html_path: ${{ workflow.persist_livestock_map.return }}
+      config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+
+  # Overall density map
+  - name: Create overall density map meshgrid 
+    id: overall_meshgrid 
+    task: create_meshgrid 
+    partial:
+      aoi: ${{ workflow.add_rgba_columns.return }}
+      auto_scale_or_custom_cell_size:
+        grid_cell_size: 2000
+      crs: "EPSG:3857"
+      intersecting_only: true
+  
+  - name: Calculate overall feature density 
+    id: overall_feature_density 
+    task: calculate_feature_density 
+    partial: 
+      geodataframe: ${{ workflow.add_rgba_columns.return }}
+      meshgrid: ${{ workflow.overall_meshgrid.return }}
+      geometry_type: point 
+      sum_column: null 
+
+  - name: Retain density values greater than zero 
+    id: filter_positive_density
+    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
+    partial: 
+      df: ${{ workflow.overall_feature_density.return }}
+      column_name: "density"
+      op: "gt"
+      value: 0
+      reset_index: true 
+
+  - name: Sort density grid values in ascending order
+    id: sort_density_grid
+    task: sort_values
+    partial: 
+      df: ${{ workflow.filter_positive_density.return }}
+      column_name: "density"
+      ascending: true
+      na_position: "last"
+
+  - name: Apply bin classification to density grid
+    id: density_bins
+    task: apply_classification 
+    partial: 
+      input_column_name: density
+      output_column_name: density_bins
+      df: ${{ workflow.sort_density_grid.return }}
+      label_options: 
+        label_ranges: true 
+        label_decimals: 0 
+      classification_options: 
+        scheme: "equal_interval"
+        k: 5
+
+  - name: Apply colormap to density bins 
+    id: apply_density_colormap
+    task: apply_color_map
+    partial: 
+      df: ${{ workflow.density_bins.return }}
+      input_column_name: density_bins 
+      output_column_name: density_bins_colors
+      colormap: ["#FFF7BC", "#FD8D3C", "#F03B20", "#BD0026", "#99000D"]
+
+  - name: Create density grid layers
+    id: generate_density_layers
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial: 
+      data_url: null
+      layer_style: 
+        filled: true 
+        stroked: true 
+        extruded: false 
+        wireframe: false
+        get_fill_color: density_bins_colors
+        get_line_color: [0,0,0,200]
+        opacity: 0.55 
+        get_line_width: 0.35
+        get_elevation: 0
+        get_point_radius: 1
+        line_width_units: pixels 
+        line_width_scale: 1 
+        line_width_min_pixels: 1
+        line_width_max_pixels: 5
+
+      legend: 
+        title: Density
+        label_column: density_bins
+        color_column: density_bins_colors
+        sort: null
+        label_suffix: null
+      geodataframe: ${{ workflow.apply_density_colormap.return }}
+
+  - name: Overlay Predation Density Grid on Amboseli Map
+    id: combine_ambo_grid_layers
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
+    partial:
+      static_layers:
+        - ${{ workflow.create_land_layer.return }}
+        - ${{ workflow.create_bound_layer.return }}
+        - ${{ workflow.create_fence_layer.return }}
+      grouped_layers: 
+        - ${{ workflow.generate_density_layers.return }}
+
+  - name: Draw Predation Incident Density Map
+    id: draw_density_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map
+    partial:
+      tile_layers: ${{ workflow.configure_base_maps.return }}
+      static: false
+      title: null
+      max_zoom: 10
+      legend_style:
+        placement: "bottom-right"
+      geo_layers: ${{ workflow.combine_ambo_grid_layers.return }}
+      view_state: ${{ workflow.gdf_image_extent.return }}
+
+  - name: Save Predation Density Map
+    id: persist_density_urls
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.draw_density_map.return }}
+      filename: predation_incident_density_map.html  # -- convert this to png
+
+  - name: Convert predation density map to png
+    id: convert_density_map_png
+    task: html_to_png
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      html_path: ${{ workflow.persist_density_urls.return }}
+      config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout:  40000
+        max_concurrent_pages: 1
+
+  # Boma density map
+  - name: Filter Events to Boma Attacks Only
+    id: filter_boma_events
+    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
+    partial:
+      df: ${{ workflow.add_rgba_columns.return }}
+      column_name: "Where were the livestock when the attack happened"
+      op: equal 
+      reset_index: false
+      value: "Inside Boma"
+
+  - name: Create inside boma density map meshgrid 
+    id: boma_meshgrid 
+    task: create_meshgrid 
+    partial:
+      aoi: ${{ workflow.filter_boma_events.return }}
+      auto_scale_or_custom_cell_size:
+        grid_cell_size: 2000
+      crs: "EPSG:3857"
+      intersecting_only: true
+  
+  - name: Calculate boma feature density 
+    id: boma_feature_density 
+    task: calculate_feature_density 
+    partial: 
+      geodataframe: ${{ workflow.add_rgba_columns.return }}
+      meshgrid: ${{ workflow.boma_meshgrid.return }}
+      geometry_type: point 
+      sum_column: null 
+
+  - name: Retain density values greater than zero 
+    id: boma_positive_density
+    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
+    partial: 
+      df: ${{ workflow.boma_feature_density.return }}
+      column_name: "density"
+      op: "gt"
+      value: 0
+      reset_index: true 
+
+  - name: Sort boma density grid values in ascending order
+    id: sort_boma_density_grid
+    task: sort_values
+    partial: 
+      df: ${{ workflow.boma_positive_density.return }}
+      column_name: "density"
+      ascending: true
+      na_position: "last"
+  
+  - name: Apply bin classification to boma density grid
+    id: density_boma_bins
+    task: apply_classification 
+    partial: 
+      input_column_name: density
+      output_column_name: density_bins
+      df: ${{ workflow.sort_boma_density_grid.return }}
+      label_options: 
+        label_ranges: true 
+        label_decimals: 0 
+      classification_options: 
+        scheme: "equal_interval"
+        k: 5
+
+  - name: Apply colormap to boma density bins 
+    id: apply_density_boma_colormap
+    task: apply_color_map
+    partial: 
+      df: ${{ workflow.density_boma_bins.return }}
+      input_column_name: density_bins 
+      output_column_name: density_bins_colors
+      colormap: ["#FFF7BC", "#FD8D3C", "#F03B20", "#BD0026", "#99000D"]
+
+  - name: Create boma density grid layers
+    id: generate_boma_density_layers
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
+    partial: 
+      data_url: null
+      layer_style: 
+        filled: true 
+        stroked: true 
+        extruded: false 
+        wireframe: false
+        get_fill_color: density_bins_colors
+        get_line_color: [0,0,0,200]
+        opacity: 0.55 
+        get_line_width: 0.35
+        get_elevation: 0
+        get_point_radius: 1
+        line_width_units: pixels 
+        line_width_scale: 1 
+        line_width_min_pixels: 1
+        line_width_max_pixels: 5
+
+      legend: 
+        title: Density
+        label_column: density_bins
+        color_column: density_bins_colors
+        sort: null
+        label_suffix: null
+      
+      geodataframe: ${{ workflow.apply_density_boma_colormap.return }}
+
+  - name: Overlay Boma Density Grid on Amboseli Map
+    id: combine_ambo_boma_grid_layers
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
+    partial:
+      static_layers:
+        - ${{ workflow.create_land_layer.return }}
+        - ${{ workflow.create_bound_layer.return }}
+        - ${{ workflow.create_fence_layer.return }}
+      grouped_layers: 
+        - ${{ workflow.generate_boma_density_layers.return }}
+
+  - name: Draw boma density map
+    id: draw_density_boma_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map
+    partial:
+      tile_layers: ${{ workflow.configure_base_maps.return }}
+      static: false
+      title: null
+      max_zoom: 10
+      legend_style:
+        placement: "bottom-right"
+      geo_layers: ${{ workflow.combine_ambo_boma_grid_layers.return }}
+      view_state: ${{ workflow.gdf_image_extent.return }}
+
+  - name: Persist boma density map 
+    id: persist_density_boma_urls
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.draw_density_boma_map.return }}
+      filename: boma_predation_density_map.html  # -- convert this to png
+
+  - name: Convert boma density map to png
+    id: convert_density_boma_map_png
+    task: html_to_png
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      html_path: ${{ workflow.persist_density_boma_urls.return }}
+      config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+
+  - name: Convert chart htmls to png
+    id: convert_chart_html_png 
+    task: html_to_png 
+    skipif:
+      conditions:
+        - any_is_empty_df
+        - any_dependency_skipped
+    partial: 
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      html_path: 
+        - ${{ workflow.persist_total_livestock_pie.return }}
+        - ${{ workflow.persist_compensation_pred_pie.return }}
+        - ${{ workflow.persist_compensation_ranch_pie.return }}
+        - ${{ workflow.persist_killed_claim_stacked_bar.return }}
+        - ${{ workflow.persist_claims_ranch_stacked_bar.return }}
+        - ${{ workflow.persist_killed_pred_stacked_bar.return }}
+        - ${{ workflow.persist_killed_pred_stacked_bar.return }}
+        - ${{ workflow.persist_location_attack_pie.return }}
+        - ${{ workflow.persist_boma_type_pie_chart.return }}
+        - ${{ workflow.persist_ranch_killed_multiline.return }}
+        - ${{ workflow.persist_loc_killed_multiline.return }}
+        - ${{ workflow.persist_claim_type_multiline.return }}
+        - ${{ workflow.persist_time_of_attack_bar_chart.return }}
+      config: 
+        width: 1280          
+        height: 720          
+        full_page: false
+        device_scale_factor: 2.0 
+        wait_for_timeout: 1
+        timeout: 0 
+        max_concurrent_pages: 5
+
+  # ============================================================
+  # Dashboard Widgets — Charts
+  # ============================================================
+  - name: Create livestock killed by predator chart widget
+    id: widget_livestock_killed_pie
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed by Predator"
+      data: ${{ workflow.persist_total_livestock_pie.return }}
+
+  - name: Create compensation value by predator chart widget
+    id: widget_compensation_pred_pie
+    task: create_plot_widget_single_view
+    partial:
+      title: "Compensation Value by Predator"
+      data: ${{ workflow.persist_compensation_pred_pie.return }}
+
+  - name: Create compensation value by ranch chart widget
+    id: widget_compensation_ranch_pie
+    task: create_plot_widget_single_view
+    partial:
+      title: "Compensation Value by Ranch"
+      data: ${{ workflow.persist_compensation_ranch_pie.return }}
+
+  - name: Create livestock killed by claim type chart widget
+    id: widget_killed_claim_bar
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed by Claim Type"
+      data: ${{ workflow.persist_killed_claim_stacked_bar.return }}
+
+  - name: Create claims by ranch chart widget
+    id: widget_claims_ranch_bar
+    task: create_plot_widget_single_view
+    partial:
+      title: "Claims by Ranch and Claim Type"
+      data: ${{ workflow.persist_claims_ranch_stacked_bar.return }}
+
+  - name: Create livestock killed by predator percent chart widget
+    id: widget_killed_pred_pct_bar
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed by Predator (% by Ranch)"
+      data: ${{ workflow.persist_killed_pred_stacked_bar.return }}
+
+  - name: Create location of attack chart widget
+    id: widget_location_attack_pie
+    task: create_plot_widget_single_view
+    partial:
+      title: "Location of Livestock Attacks"
+      data: ${{ workflow.persist_location_attack_pie.return }}
+
+  - name: Create boma type targeted chart widget
+    id: widget_boma_type_pie
+    task: create_plot_widget_single_view
+    partial:
+      title: "Boma Type Targeted"
+      data: ${{ workflow.persist_boma_type_pie_chart.return }}
+
+  - name: Create time of attack chart widget
+    id: widget_time_of_attack_bar
+    task: create_plot_widget_single_view
+    partial:
+      title: "Predation Incidents by Time of Day"
+      data: ${{ workflow.persist_time_of_attack_bar_chart.return }}
+
+  - name: Create livestock killed over time by ranch chart widget
+    id: widget_ranch_killed_multiline
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed Over Time by Ranch"
+      data: ${{ workflow.persist_ranch_killed_multiline.return }}
+
+  - name: Create livestock killed over time by location chart widget
+    id: widget_loc_killed_multiline
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed Over Time by Attack Location"
+      data: ${{ workflow.persist_loc_killed_multiline.return }}
+
+  - name: Create claims over time by claim type chart widget
+    id: widget_claim_type_multiline
+    task: create_plot_widget_single_view
+    partial:
+      title: "Claims Over Time by Claim Type"
+      data: ${{ workflow.persist_claim_type_multiline.return }}
+
+  - name: Create livestock killed over time by predator chart widget
+    id: widget_predator_killed_multibar
+    task: create_plot_widget_single_view
+    partial:
+      title: "Livestock Killed Over Time by Predator Species"
+      data: ${{ workflow.persist_predator_killed_multibar.return }}
+
+  - name: Create historic predation trend chart widget by ranch
+    id: widget_ranch_historic_chart
+    task: create_plot_widget_single_view
+    partial:
+      title: "Historic Predation Trend by Ranch"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_ranch_historic_chart.return }}
+
+  - name: Merge per ranch historic predation trend chart widgets
+    id: widget_ranch_hist_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_ranch_historic_chart.return }}
+
+  # ============================================================
+  # Dashboard Widgets — Maps
+  # ============================================================
+  - name: Create livestock predation events map widget
+    id: widget_livestock_map
+    task: create_map_widget_single_view
+    partial:
+      title: "Livestock Predation Events Map"
+      data: ${{ workflow.persist_livestock_map.return }}
+
+  - name: Create predation incident density map widget
+    id: widget_density_map
+    task: create_map_widget_single_view
+    partial:
+      title: "Predation Incident Density Map"
+      data: ${{ workflow.persist_density_urls.return }}
+
+  - name: Create boma predation density map widget
+    id: widget_boma_density_map
+    task: create_map_widget_single_view
+    partial:
+      title: "Boma Predation Density Map"
+      data: ${{ workflow.persist_density_boma_urls.return }}
+
+  # ============================================================
+  # Dashboard Widgets — Tables
+  # ============================================================
+  - name: Draw overall predation summary table
+    id: overall_summary_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.overall_summary_table.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Overall Predation Summary"
+
+  - name: Save overall predation summary table (HTML)
+    id: overall_summary_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.overall_summary_table_html.return }}
+      filename: overall_predation_summary_table.html
+      filename_suffix: null
+
+  - name: Create overall predation summary table widget
+    id: widget_overall_summary_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Overall Predation Summary"
+      data: ${{ workflow.overall_summary_table_html_url.return }}
+
+  - name: Draw livestock killed by claim type table
+    id: claim_type_killed_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.format_claim_type_killed.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Livestock Killed by Claim Type"
+
+  - name: Save livestock killed by claim type table (HTML)
+    id: claim_type_killed_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.claim_type_killed_table_html.return }}
+      filename: livestock_killed_by_claim_type_table.html
+      filename_suffix: null
+
+  - name: Create livestock killed by claim type table widget
+    id: widget_claim_type_killed_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Livestock Killed by Claim Type"
+      data: ${{ workflow.claim_type_killed_table_html_url.return }}
+
+  - name: Draw livestock killed by predator species table
+    id: predator_killed_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.format_predator_killed.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Livestock Killed by Predator Species"
+
+  - name: Save livestock killed by predator species table (HTML)
+    id: predator_killed_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.predator_killed_table_html.return }}
+      filename: livestock_killed_by_predator_species_table.html
+      filename_suffix: null
+
+  - name: Create livestock killed by predator species table widget
+    id: widget_predator_killed_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Livestock Killed by Predator Species"
+      data: ${{ workflow.predator_killed_table_html_url.return }}
+
+  - name: Draw livestock attacks by location table
+    id: location_attack_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.format_location_attack.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Livestock Attacks by Location"
+
+  - name: Save livestock attacks by location table (HTML)
+    id: location_attack_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.location_attack_table_html.return }}
+      filename: livestock_attacks_by_location_table.html
+      filename_suffix: null
+
+  - name: Create livestock attacks by location table widget
+    id: widget_location_attack_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Livestock Attacks by Location"
+      data: ${{ workflow.location_attack_table_html_url.return }}
+
+  - name: Draw predation incidents by predator and location table
+    id: predation_location_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.merge_predation_pct.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Predation Incidents by Predator and Location"
+
+  - name: Save predation incidents by predator and location table (HTML)
+    id: pred_loc_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.predation_location_table_html.return }}
+      filename: predation_incidents_by_predator_and_location_table.html
+      filename_suffix: null
+
+  - name: Create predation incidents by predator and location table widget
+    id: widget_predation_location_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Predation Incidents by Predator and Location"
+      data: ${{ workflow.pred_loc_table_html_url.return }}
+
+  - name: Draw predation incidents by boma type table
+    id: boma_incidents_table_html
+    task: draw_table
+    partial:
+      dataframe: ${{ workflow.format_boma_summary.return }}
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Predation Incidents by Boma Type"
+
+  - name: Save predation incidents by boma type table (HTML)
+    id: boma_incidents_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      text: ${{ workflow.boma_incidents_table_html.return }}
+      filename: predation_incidents_by_boma_type_table.html
+      filename_suffix: null
+
+  - name: Create predation incidents by boma type table widget
+    id: widget_boma_incidents_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Predation Incidents by Boma Type"
+      data: ${{ workflow.boma_incidents_table_html_url.return }}
+
+  - name: Draw predation summary table by ranch
+    id: ranch_summary_table_html
+    task: draw_table
+    partial:
+      columns: null
+      table_config:
+        enable_sorting: true
+        enable_filtering: true
+        enable_download: true
+        hide_header: false
+      widget_id: "Predation Summary by Ranch"
+    mapvalues:
+      argnames: dataframe
+      argvalues: ${{ workflow.predation_by_ranch_table.return }}
+
+  - name: Save predation summary table by ranch (HTML)
+    id: ranch_summary_table_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: predation_summary_by_ranch
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.ranch_summary_table_html.return }}
+
+  - name: Create predation summary table by ranch widget
+    id: widget_ranch_summary_table
+    task: create_table_widget_single_view
+    partial:
+      title: "Predation Summary by Ranch"
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.ranch_summary_table_html_url.return }}
+
+  - name: Merge per ranch predation summary table widgets
+    id: widget_ranch_summary_grouped
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.widget_ranch_summary_table.return }}
+
   - name: Download template for Big Life PCF Dashboard Report
     id: download_big_life_template
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial: 
       url: https://www.dropbox.com/scl/fi/i1v1emk1s2sb15w2arhld/pcf_report_template.docx?rlkey=16850ymbagt9vbuyqn8fsg7tc&st=zuxci7sv&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -2745,34 +2585,47 @@ workflow:
       retries: 3
       unzip: false
   
-  - name: Get user name to use on template 
-    id: get_user_name 
-    task: get_current_user
-    partial: 
-      client: ${{ workflow.er_client_name.return }}
-  
-  - name: Get user full name 
-    id: get_fullname 
-    task: get_user_full_name 
-    partial: 
-      user: ${{ workflow.get_user_name.return }}
-
   - name: Add outputs generated to template and persist 
     id: generate_big_life_report
     task: generate_pcf_report 
     partial: 
       template_path: ${{ workflow.download_big_life_template.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename: "big_life_pcf_report.docx"
+      filename: "overall_report.docx"
       time_period: ${{ workflow.time_range.return }}
-      generated_by: ${{ workflow.get_fullname.return }}
+      generated_by: "Ecoscope"
       validate_images: true 
 
   - name: Generate Big Life PCF Dashboard Report
     id: big_life_pcf_dashboard_report
     task: gather_dashboard
-    partial: 
+    partial:
       details: ${{ workflow.workflow_details.return }}
-      widgets: []
+      widgets:
+        - ${{ workflow.widget_livestock_killed_pie.return }}
+        - ${{ workflow.widget_compensation_pred_pie.return }}
+        - ${{ workflow.widget_compensation_ranch_pie.return }}
+        - ${{ workflow.widget_killed_claim_bar.return }}
+        - ${{ workflow.widget_claims_ranch_bar.return }}
+        - ${{ workflow.widget_killed_pred_pct_bar.return }}
+        - ${{ workflow.widget_location_attack_pie.return }}
+        - ${{ workflow.widget_boma_type_pie.return }}
+        - ${{ workflow.widget_time_of_attack_bar.return }}
+        - ${{ workflow.widget_ranch_killed_multiline.return }}
+        - ${{ workflow.widget_loc_killed_multiline.return }}
+        - ${{ workflow.widget_claim_type_multiline.return }}
+        - ${{ workflow.widget_livestock_map.return }}
+        - ${{ workflow.widget_density_map.return }}
+        - ${{ workflow.widget_boma_density_map.return }}
+        - ${{ workflow.widget_overall_summary_table.return }}
+        - ${{ workflow.widget_claim_type_killed_table.return }}
+        - ${{ workflow.widget_predator_killed_table.return }}
+        - ${{ workflow.widget_location_attack_table.return }}
+        - ${{ workflow.widget_predation_location_table.return }}
+        - ${{ workflow.widget_boma_incidents_table.return }}
+        - ${{ workflow.widget_ranch_summary_grouped.return }}
+        - ${{ workflow.widget_predator_killed_multibar.return }}
+        - ${{ workflow.widget_ranch_hist_grouped.return }}
+
       time_range: ${{ workflow.time_range.return }}
       groupers: ${{ workflow.groupers.return }}

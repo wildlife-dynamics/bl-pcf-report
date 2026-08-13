@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technical Guide — BL PCF Report</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href="index.html">BL PCF Report</a>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="user-guide.html">User Guide</a>
+        <a href="technical-guide.html" class="active">Technical Guide</a>
+        <a href="troubleshooting.html">Troubleshooting</a>
+        <a href="https://github.com/wildlife-dynamics/bl_pcf_report">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Technical Guide</h1>
+    <p class="lede">A deeper look at how the BL PCF Report workflow is built: the dual current/previous-period pipeline, colour mapping, every chart and map, and Word report and dashboard generation.</p>
+
+    <p>
+      <a href="assets/bl_pcf_report_technical_guide.pdf">Download the full Technical Guide (PDF)</a>
+      <span class="badge">v2.0</span>
+    </p>
+    <p>Version 2.0 rewrites the guide against the current <code>spec.yaml</code>. It corrects the dependency list (migrated to <code>ecoscope-platform</code> plus the Big Life, WWF-Virunga, STE, and MNC extension packages actually declared), the real chart/task names (several task names in the previous version matched nothing in <code>spec.yaml</code>), the previous-period mechanism (a flexible Custom/Preset/Calendar offset, not a simple integer), the Word report's fixed <code>"Ecoscope"</code> author field and <code>overall_report.docx</code> filename, and the dashboard, which wires up 24 widgets rather than an empty list. It also documents the unused <code>gee_client</code> connection field.</p>
+
+    <h2>Contents</h2>
+    <ol>
+      <li>Overview
+        <ol type="a"><li>Output summary</li></ol>
+      </li>
+      <li>Dependencies
+        <ol type="a">
+          <li>Python packages</li>
+          <li>External data — static Amboseli layers</li>
+          <li>Base map tiles</li>
+          <li>EarthRanger connection</li>
+          <li>Google Earth Engine connection (unused)</li>
+          <li>Grouper</li>
+          <li>Time frequency</li>
+        </ol>
+      </li>
+      <li>Data Ingestion and Processing
+        <ol type="a">
+          <li>Dual pipeline — current and previous period</li>
+          <li>Previous period calculation</li>
+          <li>Field normalisation</li>
+          <li>Filtering</li>
+          <li>Livestock-kill totals</li>
+        </ol>
+      </li>
+      <li>Summary Tables</li>
+      <li>Colour Mapping</li>
+      <li>Charts
+        <ol type="a">
+          <li>Pie charts</li>
+          <li>Stacked bar charts</li>
+          <li>Time-of-day bar chart</li>
+          <li>Multi-line time-series charts</li>
+          <li>Multi-bar time-series chart</li>
+          <li>Historic comparison chart (per ranch)</li>
+        </ol>
+      </li>
+      <li>Maps</li>
+      <li>Word Report &amp; Dashboard</li>
+      <li>Output Files</li>
+      <li>Workflow Execution Logic
+        <ol type="a">
+          <li>Skip conditions</li>
+          <li>mapvalues / map fan-out</li>
+          <li>Screenshot timing</li>
+          <li>Geometry cleaning</li>
+        </ol>
+      </li>
+      <li>Software Versions</li>
+    </ol>
+
+    <h2>Read it here</h2>
+    <p>The guide is embedded below. If it doesn't render in your browser, use the download link above.</p>
+    <embed src="assets/bl_pcf_report_technical_guide.pdf" type="application/pdf" width="100%" height="900px" style="border: 1px solid #d8e8d8; border-radius: 6px;" />
+  </main>
+
+  <footer class="site-footer">
+    <p>BL PCF Report &middot; <a href="https://github.com/wildlife-dynamics/bl_pcf_report">wildlife-dynamics/bl_pcf_report</a> on GitHub</p>
+  </footer>
+</body>
+</html>
