@@ -2226,6 +2226,9 @@ workflow:
   - name: Create livestock killed by predator chart widget
     id: widget_livestock_killed_pie
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed by Predator"
       data: ${{ workflow.persist_total_livestock_pie.return }}
@@ -2233,6 +2236,9 @@ workflow:
   - name: Create compensation value by predator chart widget
     id: widget_compensation_pred_pie
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Compensation Value by Predator"
       data: ${{ workflow.persist_compensation_pred_pie.return }}
@@ -2240,6 +2246,9 @@ workflow:
   - name: Create compensation value by ranch chart widget
     id: widget_compensation_ranch_pie
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Compensation Value by Ranch"
       data: ${{ workflow.persist_compensation_ranch_pie.return }}
@@ -2247,6 +2256,9 @@ workflow:
   - name: Create livestock killed by claim type chart widget
     id: widget_killed_claim_bar
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed by Claim Type"
       data: ${{ workflow.persist_killed_claim_stacked_bar.return }}
@@ -2254,6 +2266,9 @@ workflow:
   - name: Create claims by ranch chart widget
     id: widget_claims_ranch_bar
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Claims by Ranch and Claim Type"
       data: ${{ workflow.persist_claims_ranch_stacked_bar.return }}
@@ -2261,6 +2276,9 @@ workflow:
   - name: Create livestock killed by predator percent chart widget
     id: widget_killed_pred_pct_bar
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed by Predator (% by Ranch)"
       data: ${{ workflow.persist_killed_pred_stacked_bar.return }}
@@ -2268,6 +2286,9 @@ workflow:
   - name: Create location of attack chart widget
     id: widget_location_attack_pie
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Location of Livestock Attacks"
       data: ${{ workflow.persist_location_attack_pie.return }}
@@ -2275,6 +2296,9 @@ workflow:
   - name: Create boma type targeted chart widget
     id: widget_boma_type_pie
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Boma Type Targeted"
       data: ${{ workflow.persist_boma_type_pie_chart.return }}
@@ -2282,6 +2306,9 @@ workflow:
   - name: Create time of attack chart widget
     id: widget_time_of_attack_bar
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Predation Incidents by Time of Day"
       data: ${{ workflow.persist_time_of_attack_bar_chart.return }}
@@ -2289,6 +2316,9 @@ workflow:
   - name: Create livestock killed over time by ranch chart widget
     id: widget_ranch_killed_multiline
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed Over Time by Ranch"
       data: ${{ workflow.persist_ranch_killed_multiline.return }}
@@ -2296,6 +2326,9 @@ workflow:
   - name: Create livestock killed over time by location chart widget
     id: widget_loc_killed_multiline
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed Over Time by Attack Location"
       data: ${{ workflow.persist_loc_killed_multiline.return }}
@@ -2303,6 +2336,9 @@ workflow:
   - name: Create claims over time by claim type chart widget
     id: widget_claim_type_multiline
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Claims Over Time by Claim Type"
       data: ${{ workflow.persist_claim_type_multiline.return }}
@@ -2310,6 +2346,9 @@ workflow:
   - name: Create livestock killed over time by predator chart widget
     id: widget_predator_killed_multibar
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed Over Time by Predator Species"
       data: ${{ workflow.persist_predator_killed_multibar.return }}
@@ -2317,6 +2356,9 @@ workflow:
   - name: Create historic predation trend chart widget by ranch
     id: widget_ranch_historic_chart
     task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Historic Predation Trend by Ranch"
     map:
@@ -2335,6 +2377,9 @@ workflow:
   - name: Create livestock predation events map widget
     id: widget_livestock_map
     task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Predation Events Map"
       data: ${{ workflow.persist_livestock_map.return }}
@@ -2342,6 +2387,9 @@ workflow:
   - name: Create predation incident density map widget
     id: widget_density_map
     task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Predation Incident Density Map"
       data: ${{ workflow.persist_density_urls.return }}
@@ -2349,6 +2397,9 @@ workflow:
   - name: Create boma predation density map widget
     id: widget_boma_density_map
     task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Boma Predation Density Map"
       data: ${{ workflow.persist_density_boma_urls.return }}
@@ -2381,6 +2432,9 @@ workflow:
   - name: Create overall predation summary table widget
     id: widget_overall_summary_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Overall Predation Summary"
       data: ${{ workflow.overall_summary_table_html_url.return }}
@@ -2410,6 +2464,9 @@ workflow:
   - name: Create livestock killed by claim type table widget
     id: widget_claim_type_killed_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed by Claim Type"
       data: ${{ workflow.claim_type_killed_table_html_url.return }}
@@ -2439,6 +2496,9 @@ workflow:
   - name: Create livestock killed by predator species table widget
     id: widget_predator_killed_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Killed by Predator Species"
       data: ${{ workflow.predator_killed_table_html_url.return }}
@@ -2468,6 +2528,9 @@ workflow:
   - name: Create livestock attacks by location table widget
     id: widget_location_attack_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Livestock Attacks by Location"
       data: ${{ workflow.location_attack_table_html_url.return }}
@@ -2497,6 +2560,9 @@ workflow:
   - name: Create predation incidents by predator and location table widget
     id: widget_predation_location_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Predation Incidents by Predator and Location"
       data: ${{ workflow.pred_loc_table_html_url.return }}
@@ -2526,6 +2592,9 @@ workflow:
   - name: Create predation incidents by boma type table widget
     id: widget_boma_incidents_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Predation Incidents by Boma Type"
       data: ${{ workflow.boma_incidents_table_html_url.return }}
@@ -2558,6 +2627,9 @@ workflow:
   - name: Create predation summary table by ranch widget
     id: widget_ranch_summary_table
     task: create_table_widget_single_view
+    skipif:
+      conditions:
+        - never
     partial:
       title: "Predation Summary by Ranch"
     map:
