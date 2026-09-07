@@ -43,9 +43,13 @@ rjsf-overrides:
     # Previous Period — clarify that the comparison period ends where the current time range begins
     Previous Period.properties.set_previous_period.properties.offset.description: "Choose how to calculate the comparison period's Start Date. In every mode, the comparison period ends on your selected time range's Start Date (so it never overlaps with the current period) — only the Start Date changes."
 
+    # Select Time Frequency — the underlying task's field description isn't surfaced by codegen, so restate it here, and set Month as the default
+    time_frequency.properties.time_frequency.description: "Choose the time interval used to group and aggregate the time-series charts (e.g. by Month, Week, or Day)."
+    time_frequency.properties.time_frequency.default: "Month"
+
 workflow:
   # Set workflow details 
-  - name: Set Workflow Details
+  - name: Workflow Details
     id: workflow_details
     task: set_workflow_details
   
@@ -63,12 +67,12 @@ workflow:
         - index_name: "Ranch"
         
   #  Connect to ER 
-  - name: Connect to ER 
+  - name: Connect to EarthRanger
     id: er_client_name 
     task: set_er_connection
 
   # Set basemaps connection 
-  - name: Configure base map layers
+  - name: Configure Basemap Layers
     id: configure_base_maps
     task: set_base_maps_pydeck
     partial:

@@ -36,7 +36,7 @@ Before running the workflow, ensure you have:
 In the workflow runner, go to **Workflow Templates** and click **Add Workflow Template**. Paste the GitHub repository URL into the **Github Link** field:
 
 ```
-https://github.com/wildlife-dynamics/bl_pcf_report.git
+https://github.com/wildlife-dynamics/bl-pcf-report.git
 ```
 
 Then click **Add Template**.
@@ -59,7 +59,7 @@ Click **Connect** to save.
 
 ### Step 3 — Select the Workflow
 
-After the template is added, it appears in the **Workflow Templates** list as **bl_pcf_report**. Click it to open the workflow configuration form.
+After the template is added, it appears in the **Workflow Templates** list as **bl-pcf-report**. Click it to open the workflow configuration form.
 
 > The card may show **Initializing…** briefly while the environment is set up.
 

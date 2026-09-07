@@ -124,7 +124,7 @@ story += [
     sp(4),
     p("Version 2.0", META),
     p(f"Generated {date.today().strftime('%B %d, %Y')}", META),
-    p("Workflow id: <b>bl_pcf_report</b>", META),
+    p("Workflow id: <b>bl-pcf-report</b>", META),
     PageBreak(),
 ]
 
@@ -134,7 +134,7 @@ story += [
 story += [
     h1("1. Overview"),
     hr(),
-    p("The <b>bl_pcf_report</b> workflow ingests livestock predation events "
+    p("The <b>bl-pcf-report</b> workflow ingests livestock predation events "
       "(event type <b>hwc_lvstprd</b>) from EarthRanger for the Amboseli "
       "ecosystem and produces a comprehensive Predator Compensation Fund (PCF) "
       "incident analysis report and dashboard. The workflow covers three target "

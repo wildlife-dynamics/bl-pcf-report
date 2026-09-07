@@ -18,7 +18,7 @@
       ],
       "type": "object",
       "description": "Add information that will help to differentiate this workflow from another.",
-      "title": "Set Workflow Details"
+      "title": "Workflow Details"
     },
     "time_range": {
       "additionalProperties": false,
@@ -73,7 +73,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Connect to ER"
+      "title": "Connect to EarthRanger"
     },
     "Previous Period": {
       "type": "object",
@@ -112,7 +112,9 @@
       "properties": {
         "time_frequency": {
           "$ref": "#/$defs/TimeFrequency",
-          "title": "Time Frequency"
+          "title": "Time Frequency",
+          "description": "Choose the time interval used to group and aggregate the time-series charts (e.g. by Month, Week, or Day).",
+          "default": "Month"
         }
       },
       "required": [

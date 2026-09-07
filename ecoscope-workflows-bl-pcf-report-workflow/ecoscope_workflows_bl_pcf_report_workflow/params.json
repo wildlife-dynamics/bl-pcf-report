@@ -18,7 +18,7 @@
       ],
       "type": "object",
       "description": "Add information that will help to differentiate this workflow from another.",
-      "title": "Set Workflow Details"
+      "title": "Workflow Details"
     },
     "time_range": {
       "additionalProperties": false,
@@ -73,7 +73,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Connect to ER"
+      "title": "Connect to EarthRanger"
     },
     "set_previous_period": {
       "additionalProperties": false,
