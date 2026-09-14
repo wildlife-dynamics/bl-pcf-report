@@ -2647,7 +2647,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             label_column="Animal responsible",
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
-            layout_style={"font_size": 12, "font_style": "normal", "showlegend": True},
+            layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
             **(params.get("total_livestock_pie_chart") or {}),
         )
         .call()
@@ -2696,7 +2696,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             label_column="Animal responsible",
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
-            layout_style={"font_size": 12, "font_style": "normal", "showlegend": True},
+            layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
             **(params.get("compensation_pred_pie_chart") or {}),
         )
         .call()
@@ -2745,7 +2745,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             label_column="Ranch",
             color_column="ranch_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
-            layout_style={"font_size": 12, "font_style": "normal", "showlegend": True},
+            layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
             **(params.get("compensation_ranch_pie_chart") or {}),
         )
         .call()
@@ -2809,7 +2809,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "title_x": 0.01,
                 "title_y": 0.95,
                 "showlegend": True,
-                "font_size": 12,
+                "font_size": 10,
                 "font_color": "#222222",
                 "plot_bgcolor": "#f5f5f5",
                 "xaxis": {"title": "Ranch"},
@@ -2878,7 +2878,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "title_x": 0.01,
                 "title_y": 0.95,
                 "showlegend": True,
-                "font_size": 12,
+                "font_size": 10,
                 "font_color": "#222222",
                 "plot_bgcolor": "#f5f5f5",
                 "xaxis": {"title": "Ranch"},
@@ -2947,7 +2947,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "title_x": 0.01,
                 "title_y": 0.95,
                 "showlegend": True,
-                "font_size": 12,
+                "font_size": 10,
                 "font_color": "#222222",
                 "plot_bgcolor": "#f5f5f5",
                 "xaxis": {"title": "Ranch"},
@@ -3001,7 +3001,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             label_column="Where were the livestock when the attack happened",
             color_column="livestock_attack_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
-            layout_style={"font_size": 12, "font_style": "normal", "showlegend": True},
+            layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
             **(params.get("location_attack_pie_chart") or {}),
         )
         .call()
@@ -3050,7 +3050,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             label_column="Boma type",
             color_column="boma_type_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
-            layout_style={"font_size": 12, "font_style": "normal", "showlegend": True},
+            layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
             **(params.get("boma_type_pie_chart") or {}),
         )
         .call()
@@ -3131,7 +3131,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "title_x": 0.01,
                 "title_y": 0.95,
                 "showlegend": False,
-                "font_size": 12,
+                "font_size": 10,
                 "font_color": "#222222",
                 "plot_bgcolor": "#f5f5f5",
                 "xaxis": {"title": "Time of day"},
@@ -3210,7 +3210,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             plot_style=None,
             line_style=None,
             layout_style={
-                "font_size": 12,
+                "font_size": 10,
                 "plot_bgcolor": "#f5f5f5",
                 "font_color": None,
                 "font_style": None,
@@ -3282,7 +3282,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             plot_style=None,
             line_style=None,
             layout_style={
-                "font_size": 12,
+                "font_size": 10,
                 "plot_bgcolor": "#f5f5f5",
                 "font_color": None,
                 "font_style": None,
@@ -3350,7 +3350,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             plot_style=None,
             line_style=None,
             layout_style={
-                "font_size": 12,
+                "font_size": 10,
                 "plot_bgcolor": "#f5f5f5",
                 "font_color": None,
                 "font_style": None,
@@ -3422,7 +3422,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             plot_style=None,
             widget_id=None,
             layout_style={
-                "font_size": 12,
+                "font_size": 10,
                 "plot_bgcolor": "#f5f5f5",
                 "font_color": None,
                 "font_style": None,
@@ -3572,7 +3572,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             current_color="rgb(0, 0, 139)",
             widget_id=None,
             layout_style={
-                "font_size": 12,
+                "font_size": 10,
                 "plot_bgcolor": "#f5f5f5",
                 "font_color": None,
                 "font_style": None,
@@ -3673,7 +3673,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             gdf=add_rgba_columns,
-            expansion_factor=1.05,
+            expansion_factor=1.1,
             **(params.get("zoom_to_envelope") or {}),
         )
         .call()
