@@ -1,21 +1,10 @@
-name:  # Title Case, e.g. "My Ecoscope Workflow Template"
-
-# at least one author is required
+name: BL PCF Report
 author:
-  - name: ""
-    organization: ""
-    email: ""
+  - name: Tevin Temu
+    organization: Wildlife Dynamics
+    email: tevin@wildlifedynamics.com
 
-description: # A short description
-
-# todo: add example
-theory: "" # optional
-
-# todo: add example
-output_comment: "" # optional
-
-# optional
-# example
-# citation: 
-#   - Wu, Y. et al. (2025). "Monitoring elephant spatial patterns with Ecoscope workflows."
-citation: [] 
+description: Processes Big Life livestock predation events from EarthRanger for the Predator Compensation Fund (PCF) in the Amboseli ecosystem and produces charts, maps, and summary tables of incidents, animals killed, and compensation value by predator, ranch, claim type, attack location, and boma type, on an interactive dashboard and in a Word report.
+theory: "Analysis is limited to valid claims on the Eselengei, Mbirikani, and Kimana ranches. Adult and young livestock kills are combined into one total per event, and incidents, animals killed, and compensation value are summarised overall and per ranch. Time series are aggregated at a chosen frequency (annual, monthly, weekly, or daily), and each ranch's current period is compared against the mean and 95% confidence band of a previous period that ends where the current one starts. Incident density, overall and for boma attacks only, is mapped by counting events in a 2 km grid."
+output_comment: "Outputs a 24-widget dashboard with pie, stacked bar, time-of-day, multi-line, multi-bar, and per-ranch historic comparison charts, plus a livestock-species scatter map and overall and boma-attack density grid maps over Amboseli land-use zones, ranch boundaries, and the electric fence. Also writes cleaned current- and previous-period events (CSV), overall, per-ranch, and breakdown summary tables (GeoParquet), HTML and PNG copies of every chart and map, and a Word report (overall_report.docx)."
+citation: []
