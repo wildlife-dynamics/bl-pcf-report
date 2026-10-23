@@ -45,8 +45,8 @@ RESULTS_ENV_VAR = "ECOSCOPE_WORKFLOWS_RESULTS"
 IO_TASKS_IMPORTABLE_REFERENCES = [
     "ecoscope.platform.tasks.io.get_events",
     "ecoscope.platform.tasks.io.get_events",
-    "ecoscope_workflows_ext_custom.tasks.io.process_events_details",
-    "ecoscope_workflows_ext_custom.tasks.io.process_events_details",
+    "ecoscope.platform.tasks.io.process_events_details",
+    "ecoscope.platform.tasks.io.process_events_details",
 ]
 
 yaml = ruamel.yaml.YAML(typ="safe")
@@ -447,10 +447,14 @@ def response_json_failure(
 
 
 def _iframe_widgets_from_response_json(response_json: dict) -> list[dict]:
-    first_view = list(response_json["result"]["views"])[0]
+    first_view_key = list(response_json["result"]["views"])[0]
+    first_view = response_json["result"]["views"][first_view_key]
+    widget_view = (
+        first_view["dashboard"] if isinstance(first_view, dict) else first_view
+    )
     return [
         widget
-        for widget in response_json["result"]["views"][first_view]
+        for widget in widget_view
         if isinstance(widget["data"], str) and widget["data"].endswith(".html")
     ]
 
