@@ -1,4 +1,68 @@
 id: bl_pcf_report
+
+metadata:
+  name: BL PCF Report
+  description: >-
+    Processes Big Life livestock predation events from EarthRanger for the Predator
+    Compensation Fund (PCF) in the Amboseli ecosystem, and produces charts, maps and
+    summary tables of incidents, animals killed and compensation value by predator,
+    ranch, claim type, attack location and boma type, on an interactive dashboard and
+    in a Word report.
+  maintainers:
+    - name: Tevin Temu
+      email: tevin@wildlifedynamics.com
+      role: owner
+    - name: Zakariya Husayn
+      email: zakariya@wildlifedynamics.com
+      role: reviewer
+  outputs:
+    - name: BL PCF Dashboard
+      type: dashboard
+      description: >-
+        Pie, stacked bar, time-of-day, multi-line, multi-bar and per-ranch historic
+        comparison charts, maps and summary tables, for valid claims on the Eselengei,
+        Mbirikani and Kimana ranches.
+      indicators:
+        - name: Livestock predation
+        - name: Compensation
+    - name: Predation Maps
+      type: map
+      description: >-
+        A livestock-species event map, and overall and boma-attack incident density
+        maps on a 2 km grid, over Amboseli land-use zones, ranch boundaries and the
+        electric fence.
+      indicators:
+        - name: Livestock predation
+    - name: Predation Charts
+      type: plot
+      description: >-
+        Livestock killed and compensation value by predator, ranch, claim type, attack
+        location, boma type and time of day, and over time compared with a previous
+        period.
+      indicators:
+        - name: Livestock predation
+        - name: Compensation
+    - name: PCF Report
+      type: file
+      description: >-
+        A Word report (overall_report.docx) with the maps, charts and summary tables,
+        also offered as a dashboard download.
+      indicators:
+        - name: Livestock predation
+        - name: Compensation
+    - name: PCF Data
+      type: file
+      description: >-
+        Cleaned current- and previous-period events (CSV), and the overall, per-ranch
+        and breakdown summary tables (Parquet).
+      indicators:
+        - name: Livestock predation
+  license: BSD-3-Clause
+  repository: https://github.com/wildlife-dynamics/bl-pcf-report
+  documentation: https://github.com/wildlife-dynamics/bl-pcf-report#readme
+  readme: README.md
+  keywords: [predation, livestock, compensation, human-wildlife-conflict, big-life, amboseli]
+  thumbnail: resources/thumbnail.png
 requirements:
   - name: ecoscope-platform
     version: ">=2.25.1,<3.0.0"
