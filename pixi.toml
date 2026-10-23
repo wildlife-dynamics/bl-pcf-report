@@ -7,7 +7,15 @@ channels = [
   'https://repo.prefix.dev/ecoscope-workflows-custom/',
   'conda-forge',
 ]
+
 [dependencies]
-wt-compiler = ">=0.8.2, <0.9"
+wt-compiler = "==0.10.2"
 graphviz = "*"
 go-yq = "*"
+python = "3.14.*"  # 3.15 resolves ruamel.yaml 0.17, which breaks the VERSION.yaml dump
+
+[tasks.compile]
+cmd = './dev/recompile.sh --install'
+
+[tasks.recompile]
+cmd = './dev/recompile.sh --update'

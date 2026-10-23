@@ -17,7 +17,12 @@ from ecoscope.platform.tasks.groupby import split_groups as split_groups
 from ecoscope.platform.tasks.io import get_events as get_events
 from ecoscope.platform.tasks.io import persist_df as persist_df
 from ecoscope.platform.tasks.io import persist_text as persist_text
+from ecoscope.platform.tasks.io import process_events_details as process_events_details
 from ecoscope.platform.tasks.io import set_er_connection as set_er_connection
+from ecoscope.platform.tasks.results import (
+    create_files_single_view as create_files_single_view,
+)
+from ecoscope.platform.tasks.results import create_geojson_layer as create_geojson_layer
 from ecoscope.platform.tasks.results import (
     create_map_widget_single_view as create_map_widget_single_view,
 )
@@ -25,11 +30,15 @@ from ecoscope.platform.tasks.results import (
     create_plot_widget_single_view as create_plot_widget_single_view,
 )
 from ecoscope.platform.tasks.results import (
+    create_scatterplot_layer as create_scatterplot_layer,
+)
+from ecoscope.platform.tasks.results import (
     create_table_widget_single_view as create_table_widget_single_view,
 )
 from ecoscope.platform.tasks.results import draw_table as draw_table
 from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
 from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
+from ecoscope.platform.tasks.results import set_base_maps as set_base_maps
 from ecoscope.platform.tasks.skip import (
     any_dependency_skipped as any_dependency_skipped,
 )
@@ -43,6 +52,9 @@ from ecoscope.platform.tasks.transformation import (
     convert_column_values_to_numeric as convert_column_values_to_numeric,
 )
 from ecoscope.platform.tasks.transformation import (
+    drop_column_prefix as drop_column_prefix,
+)
+from ecoscope.platform.tasks.transformation import (
     extract_column_as_type as extract_column_as_type,
 )
 from ecoscope.platform.tasks.transformation import filter_df as filter_df
@@ -51,12 +63,16 @@ from ecoscope.platform.tasks.transformation import (
     normalize_json_column as normalize_json_column,
 )
 from ecoscope.platform.tasks.transformation import sort_values as sort_values
+from ecoscope_workflows_ext_big_life.tasks.io import (
+    load_big_life_file as load_big_life_file,
+)
 from ecoscope_workflows_ext_big_life.tasks.reporting import (
     generate_pcf_report as generate_pcf_report,
 )
 from ecoscope_workflows_ext_big_life.tasks.results import (
     draw_faceted_historic_timeseries as draw_faceted_historic_timeseries,
 )
+from ecoscope_workflows_ext_big_life.tasks.results import draw_map as draw_map_1
 from ecoscope_workflows_ext_big_life.tasks.transformation import (
     add_rgba_columns_from_hex as add_rgba_columns_from_hex,
 )
@@ -80,24 +96,8 @@ from ecoscope_workflows_ext_big_life.tasks.transformation import (
 )
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
-from ecoscope_workflows_ext_custom.tasks.io import (
-    process_events_details as process_events_details_1,
-)
-from ecoscope_workflows_ext_custom.tasks.results import (
-    create_geojson_layer as create_geojson_layer_1,
-)
-from ecoscope_workflows_ext_custom.tasks.results import (
-    create_scatterplot_layer as create_scatterplot_layer_1,
-)
-from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map_1
-from ecoscope_workflows_ext_custom.tasks.results import (
-    set_base_maps_pydeck as set_base_maps_pydeck,
-)
 from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
     reproject_gdf as reproject_gdf,
-)
-from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_column_prefix as drop_column_prefix_1,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     filter_row_values as filter_row_values,
@@ -114,9 +114,6 @@ from ecoscope_workflows_ext_mnc.tasks.transformation import (
 from ecoscope_workflows_ext_ste.tasks.filter import filter_rows as filter_rows
 from ecoscope_workflows_ext_ste.tasks.filter import (
     flexible_previous_period as flexible_previous_period,
-)
-from ecoscope_workflows_ext_ste.tasks.io import (
-    fetch_and_persist_file as fetch_and_persist_file,
 )
 from ecoscope_workflows_ext_ste.tasks.spatial_operations import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
@@ -230,7 +227,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     configure_base_maps = (
-        task(set_base_maps_pydeck)
+        task(set_base_maps)
         .validate()
         .set_task_instance_id("configure_base_maps")
         .handle_errors()
@@ -261,7 +258,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     ambo_ranch_layers = (
-        task(fetch_and_persist_file)
+        task(load_big_life_file)
         .validate()
         .set_task_instance_id("ambo_ranch_layers")
         .handle_errors()
@@ -274,18 +271,14 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            url="https://www.dropbox.com/scl/fi/wrcp3pnnxqyrclzmbtt1r/amboseli_ranch_conservancies_layers.gpkg?rlkey=jfbqj1b1nwhijxbsy7b2v1d29&st=d7rbqdfe&dl=0",
-            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            overwrite_existing=False,
-            retries=3,
-            unzip=False,
+            filename="amboseli_ranch_conservancies_layers.gpkg",
             **(params.get("ambo_ranch_layers") or {}),
         )
         .call()
     )
 
     ambo_bound_fence = (
-        task(fetch_and_persist_file)
+        task(load_big_life_file)
         .validate()
         .set_task_instance_id("ambo_bound_fence")
         .handle_errors()
@@ -298,18 +291,14 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            url="https://www.dropbox.com/scl/fi/k6dgrmxmxeb3fe6glihwa/amboseli_group_ranch_boundaries_x_electric_fence.gpkg?rlkey=limtzffe88lr0iof5kf3b6uoy&st=rreho3tq&dl=0",
-            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            overwrite_existing=False,
-            retries=3,
-            unzip=False,
+            filename="amboseli_group_ranch_boundaries_x_electric_fence.gpkg",
             **(params.get("ambo_bound_fence") or {}),
         )
         .call()
     )
 
     ambo_conservancies = (
-        task(fetch_and_persist_file)
+        task(load_big_life_file)
         .validate()
         .set_task_instance_id("ambo_conservancies")
         .handle_errors()
@@ -322,11 +311,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            url="https://www.dropbox.com/scl/fi/blo1smf49buhwx24y4z60/amboseli_group_ranch_boundaries.gpkg?rlkey=w86emavj8ug7zab73ifbzg6jv&st=v8uptlb0&dl=0",
-            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            overwrite_existing=False,
-            retries=3,
-            unzip=False,
+            filename="amboseli_group_ranch_boundaries.gpkg",
             **(params.get("ambo_conservancies") or {}),
         )
         .call()
@@ -491,7 +476,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     create_land_layer = (
-        task(create_geojson_layer_1)
+        task(create_geojson_layer)
         .validate()
         .set_task_instance_id("create_land_layer")
         .handle_errors()
@@ -504,6 +489,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             geodataframe=apply_ambo_color,
             data_url=None,
             layer_style={
@@ -578,7 +564,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     create_bound_layer = (
-        task(create_geojson_layer_1)
+        task(create_geojson_layer)
         .validate()
         .set_task_instance_id("create_bound_layer")
         .handle_errors()
@@ -591,6 +577,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             geodataframe=filter_ambo_boundaries,
             data_url=None,
             layer_style={
@@ -610,7 +597,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     create_fence_layer = (
-        task(create_geojson_layer_1)
+        task(create_geojson_layer)
         .validate()
         .set_task_instance_id("create_fence_layer")
         .handle_errors()
@@ -623,6 +610,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             geodataframe=filter_ambo_fence,
             data_url=None,
             layer_style={
@@ -655,6 +643,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            event_states=None,
             client=er_client_name,
             time_range=time_range,
             event_columns=[
@@ -712,6 +701,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            event_states=None,
             client=er_client_name,
             time_range=set_previous_period,
             event_columns=[
@@ -752,6 +742,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            fan_out=True,
             df=get_current_events,
             column_name="time",
             output_type="date",
@@ -775,6 +766,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            fan_out=True,
             df=get_previous_events,
             column_name="time",
             output_type="date",
@@ -785,7 +777,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     process_current_details = (
-        task(process_events_details_1)
+        task(process_events_details)
         .validate()
         .set_task_instance_id("process_current_details")
         .handle_errors()
@@ -808,7 +800,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     process_previous_details = (
-        task(process_events_details_1)
+        task(process_events_details)
         .validate()
         .set_task_instance_id("process_previous_details")
         .handle_errors()
@@ -877,7 +869,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     drop_currente_prefix = (
-        task(drop_column_prefix_1)
+        task(drop_column_prefix)
         .validate()
         .set_task_instance_id("drop_currente_prefix")
         .handle_errors()
@@ -899,7 +891,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     drop_previouse_prefix = (
-        task(drop_column_prefix_1)
+        task(drop_column_prefix)
         .validate()
         .set_task_instance_id("drop_previouse_prefix")
         .handle_errors()
@@ -921,7 +913,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     drop_current_hwc = (
-        task(drop_column_prefix_1)
+        task(drop_column_prefix)
         .validate()
         .set_task_instance_id("drop_current_hwc")
         .handle_errors()
@@ -943,7 +935,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     drop_previous_hwc = (
-        task(drop_column_prefix_1)
+        task(drop_column_prefix)
         .validate()
         .set_task_instance_id("drop_previous_hwc")
         .handle_errors()
@@ -978,6 +970,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            duplicate_strategy="suffix",
             df=drop_current_hwc,
             drop_columns=[
                 "event_category",
@@ -1036,6 +1029,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            duplicate_strategy="suffix",
             df=drop_previous_hwc,
             drop_columns=[
                 "event_category",
@@ -1645,7 +1639,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             df=overall_summary_table,
             filename="overall_predation_summary",
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            filetype="geoparquet",
+            filetype="parquet",
             **(params.get("persist_overall_table") or {}),
         )
         .call()
@@ -1876,7 +1870,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            filetype="geoparquet",
+            filetype="parquet",
             **(params.get("persist_ranch_table") or {}),
         )
         .mapvalues(argnames=["filename", "df"], argvalues=combine_ranch_name_table)
@@ -1974,7 +1968,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             df=format_claim_type_killed,
             filename="livestock_killed_by_claim_type",
-            filetype="geoparquet",
+            filetype="parquet",
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params.get("persist_claim_type_killed") or {}),
         )
@@ -2073,7 +2067,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             df=format_predator_killed,
             filename="livestock_killed_by_predator_species",
-            filetype="geoparquet",
+            filetype="parquet",
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params.get("persist_predator_killed") or {}),
         )
@@ -2170,7 +2164,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             df=format_location_attack,
             filename="livestock_attacks_by_location",
-            filetype="geoparquet",
+            filetype="parquet",
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params.get("persist_location_attack") or {}),
         )
@@ -2191,6 +2185,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            fan_out=True,
             df=compute_current_killed_total,
             column_name="Where were the livestock when the attack happened",
             output_type="str",
@@ -2324,7 +2319,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             df=merge_predation_pct,
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filename="predation_incidents_by_predator_and_location",
-            filetype="geoparquet",
+            filetype="parquet",
             **(params.get("persist_predation_sum_location") or {}),
         )
         .call()
@@ -2420,7 +2415,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             df=format_boma_summary,
             filename="predation_incidents_by_boma_type",
-            filetype="geoparquet",
+            filetype="parquet",
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params.get("persist_boma_incidents") or {}),
         )
@@ -3703,7 +3698,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     generate_livestock_layer = (
-        task(create_scatterplot_layer_1)
+        task(create_scatterplot_layer)
         .validate()
         .set_task_instance_id("generate_livestock_layer")
         .handle_errors()
@@ -3716,6 +3711,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             data_url=None,
             layer_style={
                 "get_fill_color": "livestock_species_colors_rgba",
@@ -3974,7 +3970,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     generate_density_layers = (
-        task(create_geojson_layer_1)
+        task(create_geojson_layer)
         .validate()
         .set_task_instance_id("generate_density_layers")
         .handle_errors()
@@ -3987,6 +3983,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             data_url=None,
             layer_style={
                 "filled": True,
@@ -4278,7 +4275,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     generate_boma_density_layers = (
-        task(create_geojson_layer_1)
+        task(create_geojson_layer)
         .validate()
         .set_task_instance_id("generate_boma_density_layers")
         .handle_errors()
@@ -4291,6 +4288,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tooltip_columns=None,
             data_url=None,
             layer_style={
                 "filled": True,
@@ -5334,7 +5332,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     download_big_life_template = (
-        task(fetch_and_persist_file)
+        task(load_big_life_file)
         .validate()
         .set_task_instance_id("download_big_life_template")
         .handle_errors()
@@ -5347,11 +5345,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            url="https://www.dropbox.com/scl/fi/i1v1emk1s2sb15w2arhld/pcf_report_template.docx?rlkey=16850ymbagt9vbuyqn8fsg7tc&st=zuxci7sv&dl=0",
-            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            overwrite_existing=False,
-            retries=3,
-            unzip=False,
+            filename="pcf_report_template.docx",
             **(params.get("download_big_life_template") or {}),
         )
         .call()
@@ -5365,20 +5359,51 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .with_tracing()
         .skipif(
             conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
+                never,
             ],
             unpack_depth=1,
         )
         .partial(
             template_path=download_big_life_template,
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            input_files=[
+                persist_overall_table,
+                persist_ranch_table,
+                persist_claim_type_killed,
+                persist_predator_killed,
+                persist_location_attack,
+                persist_predation_sum_location,
+                persist_boma_incidents,
+                convert_pred_killed_multibar_png,
+                convert_ranch_historic_chart_png,
+                convert_livestock_map_png,
+                convert_density_map_png,
+                convert_density_boma_map_png,
+                convert_chart_html_png,
+            ],
             filename="overall_report.docx",
             time_period=time_range,
             generated_by="Ecoscope",
             validate_images=True,
             **(params.get("generate_big_life_report") or {}),
         )
+        .call()
+    )
+
+    report_files = (
+        task(create_files_single_view)
+        .validate()
+        .set_task_instance_id("report_files")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(files=[generate_big_life_report], **(params.get("report_files") or {}))
         .call()
     )
 
@@ -5425,6 +5450,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             time_range=time_range,
             groupers=groupers,
+            files=report_files,
             **(params.get("big_life_pcf_dashboard_report") or {}),
         )
         .call()
