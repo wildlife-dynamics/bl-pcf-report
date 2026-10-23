@@ -143,7 +143,7 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot import (
     draw_pie_chart as draw_pie_chart_1,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
-    aggregate_by as aggregate_by_1,
+    aggregate_by as aggregate_by,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     map_column_value as map_column_value,
@@ -2075,7 +2075,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     location_attack_table = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("location_attack_table")
         .handle_errors()
@@ -2226,7 +2226,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     predation_location_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("predation_location_incidents")
         .handle_errors()
@@ -2326,7 +2326,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     boma_pred_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("boma_pred_incidents")
         .handle_errors()
