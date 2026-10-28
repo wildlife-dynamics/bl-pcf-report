@@ -4437,7 +4437,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 persist_killed_claim_stacked_bar,
                 persist_claims_ranch_stacked_bar,
                 persist_killed_pred_stacked_bar,
-                persist_killed_pred_stacked_bar,
                 persist_location_attack_pie,
                 persist_boma_type_pie_chart,
                 persist_ranch_killed_multiline,
