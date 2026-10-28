@@ -2273,7 +2273,6 @@ workflow:
         - ${{ workflow.persist_killed_claim_stacked_bar.return }}
         - ${{ workflow.persist_claims_ranch_stacked_bar.return }}
         - ${{ workflow.persist_killed_pred_stacked_bar.return }}
-        - ${{ workflow.persist_killed_pred_stacked_bar.return }}
         - ${{ workflow.persist_location_attack_pie.return }}
         - ${{ workflow.persist_boma_type_pie_chart.return }}
         - ${{ workflow.persist_ranch_killed_multiline.return }}
