@@ -64,9 +64,8 @@ metadata:
   keywords: [predation, livestock, compensation, human-wildlife-conflict, big-life, amboseli]
   thumbnail: resources/thumbnail.png
 requirements:
-  # Hold at 2.26: later releases pull in a pydantic the BL task packages don't support yet.
   - name: ecoscope-platform
-    version: ">=2.25.1,<2.27"
+    version: ">=2.25.1,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
@@ -82,7 +81,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc9.*"
+    version: "1.0.1"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-big-life
@@ -1296,8 +1295,9 @@ workflow:
   # Draw charts 
   - name: Draw total livestock killed pie chart 
     id: total_livestock_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
+      donut_style: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "total_animals_killed"
@@ -1321,8 +1321,9 @@ workflow:
 
   - name: Draw compensation value by predator pie chart 
     id: compensation_pred_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
+      donut_style: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Compensation value to owner"
@@ -1346,8 +1347,9 @@ workflow:
   
   - name: Draw compensation value by ranch pie chart 
     id: compensation_ranch_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
+      donut_style: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Compensation value to owner"
@@ -1500,8 +1502,9 @@ workflow:
 
   - name: Draw location of livestock attack pie chart 
     id: location_attack_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
+      donut_style: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Where were the livestock when the attack happened" #"Total Incidents"
@@ -1526,8 +1529,9 @@ workflow:
   # Boma  boma_pred_incidents
   - name: Draw type of bomas targeted in livestock attacks pie chart 
     id: boma_type_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
+      donut_style: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       value_column: "Boma type"
@@ -1615,6 +1619,7 @@ workflow:
     id: ranch_killed_multiline_chart
     task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
+      tick_frequency: null
       widget_id: null 
       dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
@@ -1656,6 +1661,7 @@ workflow:
     id: location_killed_multiline_chart
     task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
+      tick_frequency: null
       widget_id: null 
       dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"
@@ -1697,6 +1703,7 @@ workflow:
     id: claim_type_multiline_chart
     task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_grouped_line_time_series_chart
     partial: 
+      tick_frequency: null
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
       x_axis: "time"

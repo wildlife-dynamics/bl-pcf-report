@@ -168,13 +168,13 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
     draw_grouped_line_time_series_chart as draw_grouped_line_time_series_chart,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
-    select_time_frequency as select_time_frequency,
-)
-from ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot import (
     draw_pie_chart as draw_pie_chart_1,
 )
+from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
+    select_time_frequency as select_time_frequency,
+)
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
-    aggregate_by as aggregate_by_1,
+    aggregate_by as aggregate_by,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     map_column_value as map_column_value,
@@ -2104,7 +2104,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     location_attack_table = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("location_attack_table")
         .handle_errors()
@@ -2255,7 +2255,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     predation_location_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("predation_location_incidents")
         .handle_errors()
@@ -2355,7 +2355,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     boma_pred_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("boma_pred_incidents")
         .handle_errors()
@@ -2665,6 +2665,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="total_animals_killed",
@@ -2714,6 +2715,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Compensation value to owner",
@@ -2763,6 +2765,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Compensation value to owner",
@@ -3019,6 +3022,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Where were the livestock when the attack happened",
@@ -3068,6 +3072,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Boma type",
@@ -3220,6 +3225,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tick_frequency=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             x_axis="time",
@@ -3288,6 +3294,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tick_frequency=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             x_axis="time",
@@ -3360,6 +3367,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            tick_frequency=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             x_axis="time",

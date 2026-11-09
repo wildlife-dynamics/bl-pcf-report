@@ -17,7 +17,7 @@ platforms = [
 ]
 
 [dependencies.ecoscope-platform]
-version = ">=2.25.1,<2.27"
+version = ">=2.25.1,<3.0.0"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-custom]
@@ -33,7 +33,7 @@ version = "1.0.0.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-wwf-virunga]
-version = "0.0.0rc9.*"
+version = "==1.0.1"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-big-life]
