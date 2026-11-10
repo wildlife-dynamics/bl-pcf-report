@@ -24,32 +24,28 @@
       "additionalProperties": false,
       "properties": {
         "since": {
+          "description": "The start time",
           "format": "date-time",
           "title": "Since",
-          "type": "string",
-          "description": "The start time"
+          "type": "string"
         },
         "until": {
+          "description": "The end time",
           "format": "date-time",
           "title": "Until",
-          "type": "string",
-          "description": "The end time"
+          "type": "string"
         },
         "timezone": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TimezoneInfo"
-            }
-          ],
+          "$ref": "#/$defs/TimezoneInfo",
           "default": null,
           "title": "Timezone"
         },
         "time_format": {
           "default": "%d %b %Y %H:%M:%S",
-          "title": "Time Format",
-          "type": "string",
           "description": "The time format",
-          "ecoscope:advanced": true
+          "ecoscope:advanced": true,
+          "title": "Time Format",
+          "type": "string"
         }
       },
       "required": [
@@ -65,8 +61,8 @@
       "properties": {
         "data_source": {
           "$ref": "#/$defs/EarthRangerConnection",
-          "title": "",
-          "description": "Select one of your configured data sources."
+          "description": "Select one of your configured data sources.",
+          "title": ""
         }
       },
       "required": [
@@ -95,8 +91,8 @@
                   "$ref": "#/$defs/CalendarPreviousPeriod"
                 }
               ],
-              "title": "Offset",
-              "description": "Choose how to calculate the comparison period's Start Date. In every mode, the comparison period ends on your selected time range's Start Date (so it never overlaps with the current period) \u2014 only the Start Date changes."
+              "description": "Choose how to calculate the comparison period's Start Date. In every mode, the comparison period ends on your selected time range's Start Date (so it never overlaps with the current period) \u2014 only the Start Date changes.",
+              "title": "Offset"
             }
           },
           "required": [
@@ -112,7 +108,6 @@
       "properties": {
         "time_frequency": {
           "$ref": "#/$defs/TimeFrequency",
-          "title": "Time Frequency",
           "description": "Choose the time interval used to group and aggregate the time-series charts (e.g. by Month, Week, or Day).",
           "default": "Month"
         }
