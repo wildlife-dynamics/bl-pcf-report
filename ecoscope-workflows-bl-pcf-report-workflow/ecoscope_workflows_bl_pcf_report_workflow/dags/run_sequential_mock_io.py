@@ -168,13 +168,13 @@ from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
     draw_grouped_line_time_series_chart as draw_grouped_line_time_series_chart,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
-    select_time_frequency as select_time_frequency,
-)
-from ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot import (
     draw_pie_chart as draw_pie_chart_1,
 )
+from ecoscope_workflows_ext_wwf_virunga.tasks.plot import (
+    select_time_frequency as select_time_frequency,
+)
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
-    aggregate_by as aggregate_by_1,
+    aggregate_by as aggregate_by,
 )
 from ecoscope_workflows_ext_wwf_virunga.tasks.transformation import (
     map_column_value as map_column_value,
@@ -2104,7 +2104,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     location_attack_table = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("location_attack_table")
         .handle_errors()
@@ -2255,7 +2255,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     predation_location_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("predation_location_incidents")
         .handle_errors()
@@ -2354,8 +2354,32 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    filter_boma = (
+        task(filter_rows)
+        .validate()
+        .set_task_instance_id("filter_boma")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=compute_current_killed_total,
+            column_name="Where were the livestock when the attack happened",
+            op="equal",
+            reset_index=False,
+            value="Inside Boma",
+            **(params.get("filter_boma") or {}),
+        )
+        .call()
+    )
+
     boma_pred_incidents = (
-        task(aggregate_by_1)
+        task(aggregate_by)
         .validate()
         .set_task_instance_id("boma_pred_incidents")
         .handle_errors()
@@ -2368,7 +2392,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            df=compute_current_killed_total,
+            df=filter_boma,
             group_col="Boma type",
             agg_func="count",
             agg_col_name="Total Incidents",
@@ -2672,6 +2696,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
+            donut_style=None,
             **(params.get("total_livestock_pie_chart") or {}),
         )
         .call()
@@ -2721,6 +2746,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
+            donut_style=None,
             **(params.get("compensation_pred_pie_chart") or {}),
         )
         .call()
@@ -2770,6 +2796,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="ranch_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
+            donut_style=None,
             **(params.get("compensation_ranch_pie_chart") or {}),
         )
         .call()
@@ -3005,6 +3032,30 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    filter_boma_events = (
+        task(filter_rows)
+        .validate()
+        .set_task_instance_id("filter_boma_events")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=add_rgba_columns,
+            column_name="Where were the livestock when the attack happened",
+            op="equal",
+            reset_index=False,
+            value="Inside Boma",
+            **(params.get("filter_boma_events") or {}),
+        )
+        .call()
+    )
+
     location_attack_pie_chart = (
         task(draw_pie_chart_1)
         .validate()
@@ -3026,6 +3077,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="livestock_attack_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
+            donut_style=None,
             **(params.get("location_attack_pie_chart") or {}),
         )
         .call()
@@ -3069,12 +3121,13 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             widget_id=None,
-            dataframe=add_rgba_columns,
+            dataframe=filter_boma_events,
             value_column="Boma type",
             label_column="Boma type",
             color_column="boma_type_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
+            donut_style=None,
             **(params.get("boma_type_pie_chart") or {}),
         )
         .call()
@@ -3227,6 +3280,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             group_column="Ranch",
             agg_function="sum",
             time_frequency=time_frequency,
+            tick_frequency=time_frequency,
             group_order=["Eselengei", "Mbirikani", "Kimana"],
             fill=False,
             ascending=False,
@@ -3295,6 +3349,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             group_column="Where were the livestock when the attack happened",
             agg_function="sum",
             time_frequency=time_frequency,
+            tick_frequency=time_frequency,
             group_order=[
                 "Inside Boma",
                 "Within 200m of Boma",
@@ -3367,6 +3422,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             group_column="Type of claim",
             agg_function="count",
             time_frequency=time_frequency,
+            tick_frequency=time_frequency,
             group_order=["Lost in the Bush", "No Penalty", "Bad Boma"],
             fill=True,
             ascending=False,
@@ -4139,30 +4195,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    filter_boma_events = (
-        task(filter_rows)
-        .validate()
-        .set_task_instance_id("filter_boma_events")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            df=add_rgba_columns,
-            column_name="Where were the livestock when the attack happened",
-            op="equal",
-            reset_index=False,
-            value="Inside Boma",
-            **(params.get("filter_boma_events") or {}),
-        )
-        .call()
-    )
-
     boma_meshgrid = (
         task(create_meshgrid)
         .validate()
@@ -4743,45 +4775,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             title="Livestock Killed Over Time by Predator Species",
             data=persist_predator_killed_multibar,
             **(params.get("widget_predator_killed_multibar") or {}),
-        )
-        .call()
-    )
-
-    widget_ranch_historic_chart = (
-        task(create_plot_widget_single_view)
-        .validate()
-        .set_task_instance_id("widget_ranch_historic_chart")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                never,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            title="Historic Predation Trend by Ranch",
-            **(params.get("widget_ranch_historic_chart") or {}),
-        )
-        .map(argnames=["view", "data"], argvalues=persist_ranch_historic_chart)
-    )
-
-    widget_ranch_hist_grouped = (
-        task(merge_widget_views)
-        .validate()
-        .set_task_instance_id("widget_ranch_hist_grouped")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            widgets=widget_ranch_historic_chart,
-            **(params.get("widget_ranch_hist_grouped") or {}),
         )
         .call()
     )
@@ -5472,12 +5465,10 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 widget_location_attack_table,
                 widget_predation_location_table,
                 widget_boma_incidents_table,
-                widget_ranch_summary_grouped,
                 widget_predator_killed_multibar,
-                widget_ranch_hist_grouped,
             ],
             time_range=time_range,
-            groupers=groupers,
+            groupers=None,
             files=report_files,
             **(params.get("big_life_pcf_dashboard_report") or {}),
         )

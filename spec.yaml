@@ -17,7 +17,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-wwf-virunga
-    version: "0.0.0rc9.*"
+    version: "1.0.1"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-big-life
@@ -1081,11 +1081,21 @@ workflow:
       filetype: "parquet"
 
   # Boma 
+  - name: Filter Events to Boma Attacks Only
+    id: filter_boma
+    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
+    partial:
+      df: ${{ workflow.compute_current_killed_total.return }}
+      column_name: "Where were the livestock when the attack happened"
+      op: equal 
+      reset_index: false
+      value: "Inside Boma"
+
   - name: Summarize Predation Incidents by Boma Type
     id: boma_pred_incidents
     task: ecoscope_workflows_ext_wwf_virunga.tasks.transformation.aggregate_by
     partial: 
-      df: ${{ workflow.compute_current_killed_total.return }}
+      df: ${{ workflow.filter_boma.return }}
       group_col: "Boma type"
       agg_func: "count"
       agg_col_name: "Total Incidents"
@@ -1229,7 +1239,7 @@ workflow:
   # Draw charts 
   - name: Draw total livestock killed pie chart 
     id: total_livestock_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
@@ -1242,6 +1252,8 @@ workflow:
         font_size: 10
         font_style: "normal"
         showlegend: true 
+      donut_style: null 
+      
     
   - name: Persist total livestock killed pie chart
     id: persist_total_livestock_pie
@@ -1254,7 +1266,7 @@ workflow:
 
   - name: Draw compensation value by predator pie chart 
     id: compensation_pred_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
@@ -1267,6 +1279,7 @@ workflow:
         font_size: 10
         font_style: "normal"
         showlegend: true
+      donut_style: null 
 
   - name: Persist compensation by predator pie chart
     id: persist_compensation_pred_pie
@@ -1279,7 +1292,7 @@ workflow:
   
   - name: Draw compensation value by ranch pie chart 
     id: compensation_ranch_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
@@ -1292,6 +1305,7 @@ workflow:
         font_size: 10
         font_style: "normal"
         showlegend: true
+      donut_style: null 
   
   - name: Persist compensation by ranch pie chart
     id: persist_compensation_ranch_pie
@@ -1431,9 +1445,19 @@ workflow:
       filename: "livestock_killed_by_predator_pct_bar.html"
       filename_suffix: null
 
+  - name: Filter Events to Boma Attacks Only
+    id: filter_boma_events
+    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
+    partial:
+      df: ${{ workflow.add_rgba_columns.return }}
+      column_name: "Where were the livestock when the attack happened"
+      op: equal 
+      reset_index: false
+      value: "Inside Boma"
+      
   - name: Draw location of livestock attack pie chart 
     id: location_attack_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
       widget_id: null
       dataframe: ${{ workflow.add_rgba_columns.return }}
@@ -1446,6 +1470,7 @@ workflow:
         font_size: 10
         font_style: "normal"
         showlegend: true
+      donut_style: null 
   
   - name: Persist location of livestock attack pie chart
     id: persist_location_attack_pie
@@ -1459,10 +1484,10 @@ workflow:
   # Boma  boma_pred_incidents
   - name: Draw type of bomas targeted in livestock attacks pie chart 
     id: boma_type_pie_chart
-    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot._plot.draw_pie_chart
+    task: ecoscope_workflows_ext_wwf_virunga.tasks.plot.draw_pie_chart
     partial:
       widget_id: null
-      dataframe: ${{ workflow.add_rgba_columns.return }}
+      dataframe: ${{ workflow.filter_boma_events.return }}
       value_column: "Boma type"
       label_column: "Boma type"
       color_column: "boma_type_colors_rgba"
@@ -1472,6 +1497,7 @@ workflow:
         font_size: 10
         font_style: "normal"
         showlegend: true
+      donut_style: null 
   
   - name: Persist type of bomas targeted in livestock attacks pie chart
     id: persist_boma_type_pie_chart
@@ -1555,6 +1581,7 @@ workflow:
       group_column: "Ranch"
       agg_function: "sum"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      tick_frequency:  ${{ workflow.time_frequency.return }}
       group_order: ["Eselengei","Mbirikani", "Kimana"]
       fill: false 
       ascending: false 
@@ -1596,6 +1623,7 @@ workflow:
       group_column: "Where were the livestock when the attack happened"
       agg_function: "sum"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      tick_frequency:  ${{ workflow.time_frequency.return }}
       group_order: ["Inside Boma", "Within 200m of Boma", "More than 200m from Boma"]
       fill: true
       ascending: false 
@@ -1637,6 +1665,7 @@ workflow:
       group_column: "Type of claim"
       agg_function: "count"      
       time_frequency: ${{ workflow.time_frequency.return }}
+      tick_frequency: ${{ workflow.time_frequency.return }}
       group_order: ["Lost in the Bush","No Penalty", "Bad Boma"]
       fill: true
       ascending: false 
@@ -2047,16 +2076,6 @@ workflow:
         max_concurrent_pages: 1
 
   # Boma density map
-  - name: Filter Events to Boma Attacks Only
-    id: filter_boma_events
-    task: ecoscope_workflows_ext_ste.tasks.filter.filter_rows
-    partial:
-      df: ${{ workflow.add_rgba_columns.return }}
-      column_name: "Where were the livestock when the attack happened"
-      op: equal 
-      reset_index: false
-      value: "Inside Boma"
-
   - name: Create inside boma density map meshgrid 
     id: boma_meshgrid 
     task: create_meshgrid 
@@ -2356,24 +2375,6 @@ workflow:
     partial:
       title: "Livestock Killed Over Time by Predator Species"
       data: ${{ workflow.persist_predator_killed_multibar.return }}
-
-  - name: Create historic predation trend chart widget by ranch
-    id: widget_ranch_historic_chart
-    task: create_plot_widget_single_view
-    skipif:
-      conditions:
-        - never
-    partial:
-      title: "Historic Predation Trend by Ranch"
-    map:
-      argnames: [view, data]
-      argvalues: ${{ workflow.persist_ranch_historic_chart.return }}
-
-  - name: Merge per ranch historic predation trend chart widgets
-    id: widget_ranch_hist_grouped
-    task: merge_widget_views
-    partial:
-      widgets: ${{ workflow.widget_ranch_historic_chart.return }}
 
   # ============================================================
   # Dashboard Widgets — Maps
@@ -2718,10 +2719,8 @@ workflow:
         - ${{ workflow.widget_location_attack_table.return }}
         - ${{ workflow.widget_predation_location_table.return }}
         - ${{ workflow.widget_boma_incidents_table.return }}
-        - ${{ workflow.widget_ranch_summary_grouped.return }}
         - ${{ workflow.widget_predator_killed_multibar.return }}
-        - ${{ workflow.widget_ranch_hist_grouped.return }}
 
       time_range: ${{ workflow.time_range.return }}
-      groupers: ${{ workflow.groupers.return }}
+      groupers: null
       files: ${{ workflow.report_files.return }}
