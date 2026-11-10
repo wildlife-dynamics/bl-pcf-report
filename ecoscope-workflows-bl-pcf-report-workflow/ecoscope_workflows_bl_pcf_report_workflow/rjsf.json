@@ -39,13 +39,6 @@
           "$ref": "#/$defs/TimezoneInfo",
           "default": null,
           "title": "Timezone"
-        },
-        "time_format": {
-          "default": "%d %b %Y %H:%M:%S",
-          "description": "The time format",
-          "ecoscope:advanced": true,
-          "title": "Time Format",
-          "type": "string"
         }
       },
       "required": [
@@ -261,8 +254,7 @@
       "ui:order": [
         "since",
         "until",
-        "timezone",
-        "time_format"
+        "timezone"
       ]
     },
     "ui:order": [

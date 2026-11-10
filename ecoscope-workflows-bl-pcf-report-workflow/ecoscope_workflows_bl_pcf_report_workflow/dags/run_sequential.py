@@ -188,7 +188,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(**(params.get("time_range") or {}))
+        .partial(time_format="%d %b %Y %H:%M:%S", **(params.get("time_range") or {}))
         .call()
     )
 
@@ -2660,6 +2660,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="total_animals_killed",
@@ -2667,7 +2668,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
-            donut_style=None,
             **(params.get("total_livestock_pie_chart") or {}),
         )
         .call()
@@ -2710,6 +2710,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Compensation value to owner",
@@ -2717,7 +2718,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="animal_responsible_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
-            donut_style=None,
             **(params.get("compensation_pred_pie_chart") or {}),
         )
         .call()
@@ -2760,6 +2760,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Compensation value to owner",
@@ -2767,7 +2768,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="ranch_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
-            donut_style=None,
             **(params.get("compensation_ranch_pie_chart") or {}),
         )
         .call()
@@ -3041,6 +3041,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=add_rgba_columns,
             value_column="Where were the livestock when the attack happened",
@@ -3048,7 +3049,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="livestock_attack_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
-            donut_style=None,
             **(params.get("location_attack_pie_chart") or {}),
         )
         .call()
@@ -3091,6 +3091,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            donut_style=None,
             widget_id=None,
             dataframe=filter_boma_events,
             value_column="Boma type",
@@ -3098,7 +3099,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             color_column="boma_type_colors_rgba",
             plot_style={"textinfo": "percent+label+value"},
             layout_style={"font_size": 10, "font_style": "normal", "showlegend": True},
-            donut_style=None,
             **(params.get("boma_type_pie_chart") or {}),
         )
         .call()
