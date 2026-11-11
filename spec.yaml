@@ -2788,5 +2788,5 @@ workflow:
         - ${{ workflow.widget_predator_killed_multibar.return }}
 
       time_range: ${{ workflow.time_range.return }}
-      groupers: null
+      groupers: ${{ workflow.groupers.return }}
       files: ${{ workflow.report_files.return }}

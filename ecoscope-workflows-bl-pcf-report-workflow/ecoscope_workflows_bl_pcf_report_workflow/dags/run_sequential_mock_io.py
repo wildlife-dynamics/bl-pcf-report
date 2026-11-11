@@ -5468,7 +5468,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 widget_predator_killed_multibar,
             ],
             time_range=time_range,
-            groupers=None,
+            groupers=groupers,
             files=report_files,
             **(params.get("big_life_pcf_dashboard_report") or {}),
         )
