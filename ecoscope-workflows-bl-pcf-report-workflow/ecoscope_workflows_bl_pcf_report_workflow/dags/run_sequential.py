@@ -4203,7 +4203,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            geodataframe=add_rgba_columns,
+            geodataframe=filter_boma_events,
             meshgrid=boma_meshgrid,
             geometry_type="point",
             sum_column=None,
