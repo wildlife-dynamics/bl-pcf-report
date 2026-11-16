@@ -2156,7 +2156,7 @@ workflow:
     id: boma_feature_density 
     task: calculate_feature_density 
     partial: 
-      geodataframe: ${{ workflow.add_rgba_columns.return }}
+      geodataframe: ${{ workflow.filter_boma_events.return }}
       meshgrid: ${{ workflow.boma_meshgrid.return }}
       geometry_type: point 
       sum_column: null 
